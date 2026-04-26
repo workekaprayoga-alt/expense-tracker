@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#2c2c2a">
+<meta name="theme-color" content="#1a1a18" media="(prefers-color-scheme: dark)">
+<title>Dashboard Keuangan</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-192.svg">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Lock screen -->
+<div id="lock-screen">
+  <h2>Dashboard Keuangan</h2>
+  <input type="password" id="pwd" placeholder="Masukkan PIN" inputmode="numeric">
+  <button onclick="checkPwd()">Masuk</button>
+  <div class="hint">Default: 1234<br>(ganti di config.js)</div>
+</div>
+
+<div id="app" style="display: none;">
+
+<div class="app-header">
+  <div class="app-logo">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.3 7 12 12 20.7 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg>
+  </div>
+  <div>
+    <h1>Dashboard keuangan</h1>
+    <p class="subtitle" style="margin: 0;">Semua pengeluaran keluarga</p>
+  </div>
+</div>
+
+<!-- Summary -->
+<div class="card card-elevated">
+  <div class="summary-label" id="period-label">Total bulan ini</div>
+  <div class="summary-amount" id="total">Rp 0</div>
+  <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+  <div class="summary-meta" id="meta">-</div>
+  <div class="split-row">
+    <div class="split-box">
+      <div class="split-label">🧳 Rantau (kamu)</div>
+      <div class="split-value" id="sum-rantau">Rp 0</div>
+    </div>
+    <div class="split-box">
+      <div class="split-label">🏠 Rumah</div>
+      <div class="split-value" id="sum-rumah">Rp 0</div>
+    </div>
+  </div>
+</div>
+
+<!-- Chart 7 hari -->
+<div class="card">
+  <div class="section-title">7 hari terakhir</div>
+  <div class="chart-container" id="chart"></div>
+</div>
+
+<!-- Templates -->
+<div class="card" id="templates-card" style="display: none;">
+  <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
+    <span>Pengeluaran rutin</span>
+    <button class="btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="openTemplateModal()">+ Tambah</button>
+  </div>
+  <div id="templates-list"></div>
+</div>
+
+<!-- Form input -->
+<div class="card">
+  <div class="section-title">Catat pengeluaran</div>
+  
+  <label>Nominal</label>
+  <input type="text" id="amount" inputmode="numeric" placeholder="contoh: 15.000">
+  <div class="quick-row">
+    <button class="quick-btn" data-quick="1000">+ 1rb</button>
+    <button class="quick-btn" data-quick="5000">+ 5rb</button>
+    <button class="quick-btn" data-quick="10000">+ 10rb</button>
+    <button class="quick-btn" data-quick="50000">+ 50rb</button>
+  </div>
+  
+  <label>Untuk apa?</label>
+  <input type="text" id="note" placeholder="contoh: kopi pagi">
+  
+  <label>Lokasi</label>
+  <div class="opt-grid">
+    <button class="opt-btn" data-loc="rantau">🧳 Rantau</button>
+    <button class="opt-btn" data-loc="rumah">🏠 Rumah</button>
+  </div>
+  
+  <label>Kategori</label>
+  <div class="opt-grid" id="cats"></div>
+  
+  <button class="save-btn" id="save">Simpan</button>
+  <div class="msg" id="msg"></div>
+</div>
+
+<!-- Template card untuk admin (bisa add) -->
+<div class="card" id="add-tpl-card" style="display: none;"></div>
+
+<!-- Rekap -->
+<div class="card">
+  <div class="section-title">Rekap & filter</div>
+  <div class="filter-row three">
+    <button class="filter-btn active" data-scope="all">Semua</button>
+    <button class="filter-btn" data-scope="rantau">Rantau</button>
+    <button class="filter-btn" data-scope="rumah">Rumah</button>
+  </div>
+  <div class="filter-row two">
+    <button class="filter-btn active" data-period="month">Bulan ini</button>
+    <button class="filter-btn" data-period="week">7 hari</button>
+  </div>
+  <div class="filter-row two">
+    <button class="filter-btn active" data-view="list">Daftar</button>
+    <button class="filter-btn" data-view="cat">Per kategori</button>
+  </div>
+  <div id="content"><div class="loading">Memuat...</div></div>
+</div>
+
+<!-- Budget per kategori -->
+<div class="card">
+  <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
+    <span>Budget per kategori (bulanan)</span>
+    <button class="btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="openBudgetModal()">Atur</button>
+  </div>
+  <div id="budget-list"></div>
+</div>
+
+<!-- Tools -->
+<div class="card">
+  <div class="section-title">Alat</div>
+  <div style="display: grid; gap: 8px;">
+    <button class="btn-secondary" onclick="exportCSV()">📥 Download CSV (semua data)</button>
+    <button class="btn-secondary" onclick="askAnalysis()">🤖 Tanya Claude untuk analisis</button>
+    <button class="btn-secondary" onclick="logout()" style="color: var(--danger);">🔒 Kunci dashboard</button>
+  </div>
+</div>
+
+</div>
+
+<!-- Modal Edit -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Edit pengeluaran</h2>
+      <button class="modal-close" onclick="closeModal('edit-modal')" aria-label="Tutup">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
+      </button>
+    </div>
+    <label>Nominal</label>
+    <input type="text" id="edit-amount" inputmode="numeric">
+    <label>Untuk apa?</label>
+    <input type="text" id="edit-note">
+    <label>Lokasi</label>
+    <div class="opt-grid">
+      <button class="opt-btn" data-edit-loc="rantau">🧳 Rantau</button>
+      <button class="opt-btn" data-edit-loc="rumah">🏠 Rumah</button>
+    </div>
+    <label>Kategori</label>
+    <div class="opt-grid" id="edit-cats"></div>
+    <button class="save-btn" onclick="saveEdit()">Simpan perubahan</button>
+    <div class="msg" id="edit-msg"></div>
+  </div>
+</div>
+
+<!-- Modal Budget -->
+<div class="modal-overlay" id="budget-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Atur budget per kategori</h2>
+      <button class="modal-close" onclick="closeModal('budget-modal')" aria-label="Tutup">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
+      </button>
+    </div>
+    <p style="font-size: 12px; color: var(--text-muted); margin-top: 0;">
+      Set 0 untuk hapus budget kategori
+    </p>
+    <div id="budget-edit-list"></div>
+  </div>
+</div>
+
+<!-- Modal Add Template -->
+<div class="modal-overlay" id="tpl-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Pengeluaran rutin baru</h2>
+      <button class="modal-close" onclick="closeModal('tpl-modal')" aria-label="Tutup">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
+      </button>
+    </div>
+    <p style="font-size: 12px; color: var(--text-muted); margin-top: 0;">
+      Misal: "Kuota mingguan", "Kirim ke rumah", "Bayar listrik"
+    </p>
+    <label>Nama template</label>
+    <input type="text" id="tpl-label" placeholder="contoh: Kirim ke rumah">
+    <label>Nominal</label>
+    <input type="text" id="tpl-amount" inputmode="numeric">
+    <label>Lokasi</label>
+    <div class="opt-grid">
+      <button class="opt-btn" data-tpl-loc="rantau">🧳 Rantau</button>
+      <button class="opt-btn" data-tpl-loc="rumah">🏠 Rumah</button>
+    </div>
+    <label>Kategori</label>
+    <div class="opt-grid" id="tpl-cats"></div>
+    <button class="save-btn" onclick="saveTemplate()">Simpan template</button>
+    <div class="msg" id="tpl-msg"></div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="shared.js"></script>
+<script>
+let selectedCat = null;
+let selectedLoc = null;
+let editSelectedCat = null;
+let editSelectedLoc = null;
+let editingId = null;
+let tplSelectedCat = null;
+let tplSelectedLoc = null;
+let currentPeriod = 'month';
+let currentScope = 'all';
+let currentView = 'list';
+let cachedData = [];
+let allDataCache = [];
+let templates = [];
+let budgets = {};
+
+// ===== Lock screen =====
+function checkPwd() {
+  const v = document.getElementById('pwd').value;
+  if (v === ADMIN_PIN) {
+    sessionStorage.setItem('unlocked', '1');
+    showApp();
+  } else {
+    alert('PIN salah');
+  }
+}
+function showApp() {
+  document.getElementById('lock-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  init();
+}
+function logout() {
+  sessionStorage.removeItem('unlocked');
+  location.reload();
+}
+if (sessionStorage.getItem('unlocked') === '1') showApp();
+document.getElementById('pwd').addEventListener('keypress', e => {
+  if (e.key === 'Enter') checkPwd();
+});
+
+// ===== Init main app =====
+function init() {
+  buildCatButtons(document.getElementById('cats'), id => { selectedCat = id; });
+  buildCatButtons(document.getElementById('edit-cats'), id => { editSelectedCat = id; });
+  buildCatButtons(document.getElementById('tpl-cats'), id => { tplSelectedCat = id; });
+  
+  // Location buttons
+  document.querySelectorAll('[data-loc]').forEach(btn => {
+    btn.onclick = () => {
+      selectedLoc = btn.dataset.loc;
+      document.querySelectorAll('[data-loc]').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+  });
+  document.querySelectorAll('[data-edit-loc]').forEach(btn => {
+    btn.onclick = () => {
+      editSelectedLoc = btn.dataset.editLoc;
+      document.querySelectorAll('[data-edit-loc]').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+  });
+  document.querySelectorAll('[data-tpl-loc]').forEach(btn => {
+    btn.onclick = () => {
+      tplSelectedLoc = btn.dataset.tplLoc;
+      document.querySelectorAll('[data-tpl-loc]').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+  });
+  
+  // Number inputs
+  initNumberInput(document.getElementById('amount'));
+  attachQuickButtons(document.querySelector('.quick-row'), document.getElementById('amount'));
+  initNumberInput(document.getElementById('edit-amount'));
+  initNumberInput(document.getElementById('tpl-amount'));
+  
+  // Filters
+  document.querySelectorAll('[data-period]').forEach(btn => {
+    btn.onclick = () => {
+      currentPeriod = btn.dataset.period;
+      document.querySelectorAll('[data-period]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('period-label').textContent = 
+        currentPeriod === 'month' ? 'Total bulan ini' : 'Total 7 hari terakhir';
+      loadData();
+    };
+  });
+  document.querySelectorAll('[data-scope]').forEach(btn => {
+    btn.onclick = () => {
+      currentScope = btn.dataset.scope;
+      document.querySelectorAll('[data-scope]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      loadData();
+    };
+  });
+  document.querySelectorAll('[data-view]').forEach(btn => {
+    btn.onclick = () => {
+      currentView = btn.dataset.view;
+      document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderContent();
+    };
+  });
+  
+  document.getElementById('save').onclick = saveExpense;
+  
+  if (API_URL === 'PASTE_URL_APPS_SCRIPT_KAMU_DI_SINI') {
+    document.getElementById('content').innerHTML = 
+      '<div class="empty">⚠️ API URL belum diset. Edit <code>config.js</code> dulu.</div>';
+  } else {
+    loadData();
+    loadBudgets();
+    loadTemplates();
+  }
+}
+
+// ===== Save =====
+async function saveExpense() {
+  const amount = parseNum(document.getElementById('amount').value);
+  const note = document.getElementById('note').value.trim();
+  const msg = document.getElementById('msg');
+  const btn = document.getElementById('save');
+  
+  if (!amount) { msg.className = 'msg err'; msg.textContent = 'Nominal kosong'; return; }
+  if (!selectedLoc) { msg.className = 'msg err'; msg.textContent = 'Pilih lokasi'; return; }
+  if (!selectedCat) { msg.className = 'msg err'; msg.textContent = 'Pilih kategori'; return; }
+  
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+  
+  try {
+    const data = await apiPost({
+      action: 'add',
+      amount: amount,
+      note: note || getCategoryMeta(selectedCat).label,
+      category: selectedCat,
+      location: selectedLoc,
+      who: NAMA_SUAMI,
+      message: ''
+    });
+    if (data.ok) {
+      msg.className = 'msg ok'; msg.textContent = '✓ Tersimpan';
+      document.getElementById('amount').value = '';
+      document.getElementById('note').value = '';
+      selectedCat = null; selectedLoc = null;
+      document.querySelectorAll('#cats .opt-btn, [data-loc]').forEach(x => x.classList.remove('selected'));
+      loadData();
+      setTimeout(() => { msg.textContent = ''; }, 2000);
+    } else {
+      msg.className = 'msg err'; msg.textContent = 'Gagal: ' + (data.error || '');
+    }
+  } catch (e) {
+    msg.className = 'msg err'; msg.textContent = 'Tidak ada koneksi';
+  }
+  btn.disabled = false; btn.textContent = 'Simpan';
+}
+
+// ===== Load all data =====
+async function loadData() {
+  document.getElementById('content').innerHTML = '<div class="loading">Memuat...</div>';
+  try {
+    // Load filtered + all sekaligus
+    const [filteredRes, allRes] = await Promise.all([
+      apiGet({ type: 'expenses', scope: currentScope, period: currentPeriod }),
+      apiGet({ type: 'expenses', scope: 'all', period: currentPeriod })
+    ]);
+    
+    if (filteredRes.ok) cachedData = filteredRes.data;
+    if (allRes.ok) allDataCache = allRes.data;
+    
+    renderSummary();
+    renderContent();
+    renderBudgetList();
+    loadChart();
+  } catch (e) {
+    document.getElementById('content').innerHTML = '<div class="empty">Tidak ada koneksi</div>';
+  }
+}
+
+async function loadTemplates() {
+  try {
+    const res = await apiGet({ type: 'templates' });
+    if (res.ok) {
+      templates = res.data;
+      renderTemplates();
+    }
+  } catch (e) {}
+}
+
+async function loadBudgets() {
+  try {
+    const res = await apiGet({ type: 'budgets' });
+    if (res.ok) {
+      budgets = Object.assign({}, BUDGET_DEFAULTS, res.data);
+      renderBudgetList();
+    }
+  } catch (e) { budgets = BUDGET_DEFAULTS; }
+}
+
+function renderTemplates() {
+  const card = document.getElementById('templates-card');
+  const list = document.getElementById('templates-list');
+  card.style.display = 'block';
+  if (templates.length === 0) {
+    list.innerHTML = '<div class="empty" style="padding: 8px 0;">Belum ada template. Klik "Tambah" untuk bikin.</div>';
+    return;
+  }
+  list.innerHTML = templates.map(t => {
+    const cat = getCategoryMeta(t.category);
+    const locIcon = t.location === 'rantau' ? '🧳' : '🏠';
+    const tplJson = JSON.stringify(t).replace(/'/g, "\\'");
+    return '<div class="row-item">' +
+      '<div class="row-left">' +
+        '<div class="row-title">' + iconHtml(cat.icon, 16) + escapeHtml(t.label) + '</div>' +
+        '<div class="row-meta">' + locIcon + ' ' + cat.label + ' · ' + fmtRp(t.amount) + '</div>' +
+        '<div class="row-actions">' +
+          '<button class="icon-btn" onclick=\'useTemplate(' + tplJson + ')\'>+ pakai sekarang</button>' +
+          '<button class="icon-btn danger" onclick="deleteTemplate(\'' + t.id + '\')">' + iconHtml('trash', 12) + ' hapus</button>' +
+        '</div>' +
+      '</div></div>';
+  }).join('');
+}
+
+async function useTemplate(tpl) {
+  if (!confirm('Tambah "' + tpl.label + '" — ' + fmtRp(tpl.amount) + '?')) return;
+  try {
+    const data = await apiPost({
+      action: 'add',
+      amount: tpl.amount,
+      note: tpl.note || tpl.label,
+      category: tpl.category,
+      location: tpl.location,
+      who: NAMA_SUAMI,
+      message: ''
+    });
+    if (data.ok) loadData();
+  } catch (e) { alert('Gagal'); }
+}
+
+async function deleteTemplate(id) {
+  if (!confirm('Hapus template ini?')) return;
+  try {
+    const data = await apiPost({ action: 'template_delete', id: id });
+    if (data.ok) loadTemplates();
+  } catch (e) {}
+}
+
+function openTemplateModal() {
+  document.getElementById('tpl-label').value = '';
+  document.getElementById('tpl-amount').value = '';
+  tplSelectedCat = null; tplSelectedLoc = null;
+  document.querySelectorAll('#tpl-cats .opt-btn, [data-tpl-loc]').forEach(b => b.classList.remove('selected'));
+  document.getElementById('tpl-modal').classList.add('show');
+}
+
+async function saveTemplate() {
+  const label = document.getElementById('tpl-label').value.trim();
+  const amount = parseNum(document.getElementById('tpl-amount').value);
+  const msg = document.getElementById('tpl-msg');
+  
+  if (!label) { msg.className = 'msg err'; msg.textContent = 'Nama belum diisi'; return; }
+  if (!amount) { msg.className = 'msg err'; msg.textContent = 'Nominal kosong'; return; }
+  if (!tplSelectedLoc) { msg.className = 'msg err'; msg.textContent = 'Pilih lokasi'; return; }
+  if (!tplSelectedCat) { msg.className = 'msg err'; msg.textContent = 'Pilih kategori'; return; }
+  
+  try {
+    const data = await apiPost({
+      action: 'template_add',
+      label: label,
+      amount: amount,
+      category: tplSelectedCat,
+      location: tplSelectedLoc,
+      note: ''
+    });
+    if (data.ok) {
+      closeModal('tpl-modal');
+      loadTemplates();
+    }
+  } catch (e) { msg.className = 'msg err'; msg.textContent = 'Gagal'; }
+}
+
+// ===== Chart =====
+async function loadChart() {
+  try {
+    const res = await apiGet({ type: 'summary', period: 'week' });
+    if (!res.ok) return;
+    const max = Math.max(...res.daily.map(d => d.total), 1);
+    const chartEl = document.getElementById('chart');
+    chartEl.innerHTML = res.daily.map(d => {
+      const pct = (d.total / max) * 100;
+      const dt = new Date(d.date);
+      const dayLabel = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'][dt.getDay()];
+      return '<div class="chart-bar">' +
+        (d.total > 0 ? '<div class="chart-bar-value">' + fmtNum(d.total / 1000) + 'rb</div>' : '') +
+        '<div class="chart-bar-fill" style="height: ' + pct + '%;"></div>' +
+        '<div class="chart-bar-label">' + dayLabel + '</div>' +
+        '</div>';
+    }).join('');
+  } catch (e) {}
+}
+
+// ===== Render summary =====
+function renderSummary() {
+  const total = allDataCache.reduce((s, d) => s + d.amount, 0);
+  const rantau = allDataCache.filter(d => d.location === 'rantau').reduce((s, d) => s + d.amount, 0);
+  const rumah = allDataCache.filter(d => d.location === 'rumah').reduce((s, d) => s + d.amount, 0);
+  
+  document.getElementById('total').textContent = fmtRp(total);
+  document.getElementById('sum-rantau').textContent = fmtRp(rantau);
+  document.getElementById('sum-rumah').textContent = fmtRp(rumah);
+  
+  const budget = currentPeriod === 'month' ? BUDGET_TOTAL : Math.round(BUDGET_TOTAL * 7 / 30);
+  const pct = Math.min(100, Math.round((total / budget) * 100));
+  const fill = document.getElementById('progress');
+  fill.style.width = pct + '%';
+  if (pct >= 90) fill.style.background = 'var(--danger-bar)';
+  else if (pct >= 70) fill.style.background = 'var(--warn-bar)';
+  else fill.style.background = 'var(--green-bar)';
+  
+  document.getElementById('meta').textContent = 
+    pct + '% dari budget ' + fmtRp(budget) + ' · ' + allDataCache.length + ' transaksi';
+}
+
+function renderContent() {
+  const c = document.getElementById('content');
+  if (cachedData.length === 0) {
+    c.innerHTML = '<div class="empty">Belum ada catatan</div>';
+    return;
+  }
+  
+  if (currentView === 'list') {
+    c.innerHTML = cachedData.slice(0, 80).map(d => {
+      const cat = getCategoryMeta(d.category);
+      const dateStr = fmtDate(d.timestamp) + ' ' + fmtTime(d.timestamp);
+      const badge = d.location === 'rantau' 
+        ? '<span class="badge badge-rantau">🧳</span>'
+        : '<span class="badge badge-rumah">🏠</span>';
+      const whoText = d.who ? ' · ' + escapeHtml(d.who) : '';
+      return '<div class="row-item">' +
+        '<div class="row-left">' +
+          '<div class="row-title">' + badge + iconHtml(cat.icon, 16) + escapeHtml(cat.label) + '</div>' +
+          '<div class="row-meta">' + escapeHtml(d.note) + ' · ' + dateStr + whoText +
+            (d.message ? ' <span class="badge badge-msg">' + iconHtml('chat', 10) + 'pesan</span>' : '') +
+          '</div>' +
+          (d.message ? '<div class="message-box">"' + escapeHtml(d.message) + '"</div>' : '') +
+          '<div class="row-actions">' +
+            '<button class="icon-btn" onclick="openEdit(\'' + d.id + '\')">' + iconHtml('edit', 12) + ' edit</button>' +
+            '<button class="icon-btn danger" onclick="deleteItem(\'' + d.id + '\')">' + iconHtml('trash', 12) + ' hapus</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="row-amount">' + fmtRp(d.amount) + '</div></div>';
+    }).join('');
+  } else {
+    const byCat = {};
+    cachedData.forEach(d => { byCat[d.category] = (byCat[d.category] || 0) + d.amount; });
+    const total = cachedData.reduce((s, d) => s + d.amount, 0);
+    const sorted = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+    c.innerHTML = sorted.map(([cat, amt]) => {
+      const meta = getCategoryMeta(cat);
+      const pct = Math.round((amt / total) * 100);
+      return '<div class="row-item"><div class="row-left">' +
+        '<div class="row-title">' + iconHtml(meta.icon, 16) + escapeHtml(meta.label) + 
+        ' <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">' + pct + '%</span></div>' +
+        '</div><div class="row-amount">' + fmtRp(amt) + '</div></div>';
+    }).join('');
+  }
+}
+
+// ===== Budget list =====
+function renderBudgetList() {
+  const list = document.getElementById('budget-list');
+  // Hitung pengeluaran per kategori bulan ini (selalu month untuk budget)
+  const byCat = {};
+  allDataCache.forEach(d => {
+    if (currentPeriod !== 'month') return;
+    byCat[d.category] = (byCat[d.category] || 0) + d.amount;
+  });
+  
+  const items = Object.keys(budgets).filter(c => budgets[c] > 0);
+  if (items.length === 0) {
+    list.innerHTML = '<div class="empty" style="padding: 8px 0;">Belum ada budget. Klik "Atur".</div>';
+    return;
+  }
+  
+  list.innerHTML = items.map(catId => {
+    const cat = getCategoryMeta(catId);
+    const limit = budgets[catId];
+    const used = currentPeriod === 'month' ? (byCat[catId] || 0) : 0;
+    const pct = Math.min(100, Math.round((used / limit) * 100));
+    const barColor = pct >= 90 ? 'var(--danger-bar)' : pct >= 70 ? 'var(--warn-bar)' : 'var(--green-bar)';
+    return '<div class="budget-row">' +
+      '<div class="budget-info">' +
+        '<div class="budget-label">' + iconHtml(cat.icon, 14) + escapeHtml(cat.label) + 
+        ' <span style="margin-left:auto; font-size:11px; color: var(--text-muted);">' + pct + '%</span></div>' +
+        '<div class="budget-progress"><div class="budget-progress-fill" style="width:' + pct + '%; background:' + barColor + ';"></div></div>' +
+        '<div class="budget-amount">' + fmtRp(used) + ' / ' + fmtRp(limit) + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function openBudgetModal() {
+  const list = document.getElementById('budget-edit-list');
+  list.innerHTML = CATEGORIES.map(c => {
+    const val = budgets[c.id] || 0;
+    return '<div style="margin-bottom: 12px;">' +
+      '<label style="display:flex; align-items:center; gap:6px;">' + iconHtml(c.icon, 14) + escapeHtml(c.label) + '</label>' +
+      '<input type="text" inputmode="numeric" data-bud="' + c.id + '" value="' + (val ? val.toLocaleString('id-ID') : '') + '" placeholder="0" onblur="saveBudgetField(this)">' +
+    '</div>';
+  }).join('');
+  // Format inputs
+  list.querySelectorAll('input').forEach(initNumberInput);
+  document.getElementById('budget-modal').classList.add('show');
+}
+
+async function saveBudgetField(input) {
+  const cat = input.dataset.bud;
+  const val = parseNum(input.value);
+  try {
+    await apiPost({ action: 'budget_set', category: cat, monthly_limit: val });
+    budgets[cat] = val;
+    renderBudgetList();
+  } catch (e) {}
+}
+
+// ===== Edit modal =====
+function openEdit(id) {
+  const item = cachedData.find(d => d.id === id);
+  if (!item) return;
+  editingId = id;
+  editSelectedCat = item.category;
+  editSelectedLoc = item.location;
+  document.getElementById('edit-amount').value = Number(item.amount).toLocaleString('id-ID');
+  document.getElementById('edit-note').value = item.note || '';
+  document.querySelectorAll('#edit-cats .opt-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.cat === item.category);
+  });
+  document.querySelectorAll('[data-edit-loc]').forEach(b => {
+    b.classList.toggle('selected', b.dataset.editLoc === item.location);
+  });
+  document.getElementById('edit-modal').classList.add('show');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+async function saveEdit() {
+  if (!editingId) return;
+  const amount = parseNum(document.getElementById('edit-amount').value);
+  const note = document.getElementById('edit-note').value.trim();
+  const msg = document.getElementById('edit-msg');
+  
+  if (!amount) { msg.className = 'msg err'; msg.textContent = 'Nominal kosong'; return; }
+  
+  try {
+    const data = await apiPost({
+      action: 'update',
+      id: editingId,
+      amount: amount,
+      note: note,
+      category: editSelectedCat,
+      location: editSelectedLoc
+    });
+    if (data.ok) {
+      closeModal('edit-modal');
+      loadData();
+    }
+  } catch (e) {}
+}
+
+async function deleteItem(id) {
+  if (!confirm('Hapus catatan ini?')) return;
+  try {
+    const data = await apiPost({ action: 'delete', id: id });
+    if (data.ok) loadData();
+  } catch (e) {}
+}
+
+// ===== Tools =====
+async function exportCSV() {
+  // Ambil semua data tanpa filter periode
+  const res = await apiGet({ type: 'expenses', scope: 'all', period: 'all' });
+  if (!res.ok) return alert('Gagal ambil data');
+  const csv = toCSV(res.data);
+  const filename = 'pengeluaran-' + new Date().toISOString().slice(0, 10) + '.csv';
+  downloadCSV(filename, csv);
+}
+
+function askAnalysis() {
+  const total = allDataCache.reduce((s, d) => s + d.amount, 0);
+  const rantau = allDataCache.filter(d => d.location === 'rantau').reduce((s, d) => s + d.amount, 0);
+  const rumah = allDataCache.filter(d => d.location === 'rumah').reduce((s, d) => s + d.amount, 0);
+  const byCat = {};
+  allDataCache.forEach(d => { byCat[d.category] = (byCat[d.category] || 0) + d.amount; });
+  const catSummary = Object.entries(byCat)
+    .sort((a, b) => b[1] - a[1])
+    .map(([c, a]) => getCategoryMeta(c).label + ' ' + fmtRp(a))
+    .join(', ');
+  
+  const text = 'Analisis pengeluaran ' + (currentPeriod === 'month' ? 'bulan ini' : '7 hari') + 
+    ': total ' + fmtRp(total) + ', rantau ' + fmtRp(rantau) + ', rumah ' + fmtRp(rumah) + 
+    '. Per kategori: ' + catSummary + '. Apa yang sebaiknya saya kurangi?';
+  
+  navigator.clipboard.writeText(text).then(() => {
+    alert('Analisis disalin ke clipboard. Buka chat Claude dan paste.');
+  });
+}
+</script>
+</body>
+</html>
