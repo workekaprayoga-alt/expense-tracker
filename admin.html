@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#a04361">
+<meta name="theme-color" content="#1c1418" media="(prefers-color-scheme: dark)">
+<title>Dashboard Keuangan Keluarga</title>
+<link rel="manifest" href="manifest.json?v=family381">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-192.svg">
+<link rel="stylesheet" href="styles.css?v=family381">
+</head>
+<body>
+
+<div id="lock-screen">
+  <h2>🔒 Dashboard Keluarga</h2>
+  <input type="password" id="pwd" placeholder="PIN" autocomplete="off">
+  <button onclick="checkPwd()">Masuk</button>
+  <div class="hint">Atur PIN di <code>config.js</code></div>
+</div>
+
+<div id="app" style="display:none;">
+  <div class="app-header family-header">
+    <div class="app-logo app-logo-glow">❤</div>
+    <div>
+      <h1>Dashboard keuangan</h1>
+      <p class="subtitle" style="margin:0;" id="family-name">Semua pengeluaran keluarga</p>
+    </div>
+    <div id="header-family-strip"></div>
+  </div>
+
+
+  <div class="card card-elevated">
+    <div class="summary-label" id="period-label">Total bulan ini</div>
+    <div class="summary-amount" id="total">Rp 0</div>
+    <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+    <div class="summary-meta" id="meta">-</div>
+    <div class="split-row">
+      <div class="split-box"><div class="split-label">🧳 Rantau (kamu)</div><div class="split-value" id="sum-rantau">Rp 0</div></div>
+      <div class="split-box"><div class="split-label">🏠 Rumah</div><div class="split-value" id="sum-rumah">Rp 0</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <span>🏦 Dompet keluarga bulan ini</span>
+      <button class="btn-secondary micro" onclick="openIncomeModal()">+ Masuk</button>
+    </div>
+    <div class="wallet-grid">
+      <div><span>Uang masuk</span><b id="wallet-in">Rp 0</b></div>
+      <div><span>Pengeluaran</span><b id="wallet-out">Rp 0</b></div>
+      <div class="wallet-wide"><span>Sisa tercatat</span><b id="wallet-left">Rp 0</b></div>
+    </div>
+    <div id="income-list" class="income-mini-list"></div>
+  </div>
+
+  <div class="card" id="savings-card">
+    <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <span>🎯 Tabungan & target keluarga</span>
+      <button class="btn-secondary micro" onclick="openTargetModal()">+ Target</button>
+    </div>
+    <p class="tiny-muted" style="margin-top:-4px;">Bagian ini tidak otomatis mengambil sisa gaji. Isi manual saat uang benar-benar disisihkan ke target.</p>
+    <div id="target-wrap"><div class="loading">Memuat target</div></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <span>💌 Pesan suami-istri</span>
+      <button class="btn-secondary micro" onclick="sendQuickLove()">Kirim ❤</button>
+    </div>
+    <textarea id="quick-message" rows="2" placeholder="Tulis pesan untuk istri…"></textarea>
+    <div id="messages-list"><div class="loading">Memuat pesan</div></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">🤖 Insight bulan ini</div>
+    <div id="insight-list"><div class="loading">Memuat insight</div></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <span>📅 Jatuh tempo rutin</span>
+      <button class="btn-secondary micro" onclick="openBillModal()">+ Tambah</button>
+    </div>
+    <div id="bills-list"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">7 hari terakhir</div>
+    <div class="chart-container" id="chart"></div>
+  </div>
+
+  <div class="card" id="templates-card" style="display:none;">
+    <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <span>Pengeluaran rutin</span>
+      <button class="btn-secondary micro" onclick="openTemplateModal()">+ Tambah</button>
+    </div>
+    <div id="templates-list"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">✍ Catat pengeluaran</div>
+    <label>Nominal</label><input type="text" id="amount" inputmode="numeric" placeholder="contoh: 15.000">
+    <div class="quick-row"><button class="quick-btn" data-quick="1000">+ 1rb</button><button class="quick-btn" data-quick="5000">+ 5rb</button><button class="quick-btn" data-quick="10000">+ 10rb</button><button class="quick-btn" data-quick="50000">+ 50rb</button></div>
+    <label>Untuk apa?</label><input type="text" id="note" placeholder="contoh: kopi pagi">
+    <label>Lokasi</label><div class="opt-grid"><button class="opt-btn" data-loc="rantau">🧳 Rantau</button><button class="opt-btn" data-loc="rumah">🏠 Rumah</button></div>
+    <label>Kategori</label><div class="opt-grid" id="cats"></div>
+    <button class="save-btn" id="save">Simpan</button>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <div id="reminder-box" class="card"></div>
+
+  <div class="card">
+    <div class="section-title">Rekap & filter</div>
+    <div class="filter-row three"><button class="filter-btn active" data-scope="all">Semua</button><button class="filter-btn" data-scope="rantau">Rantau</button><button class="filter-btn" data-scope="rumah">Rumah</button></div>
+    <div class="filter-row two"><button class="filter-btn active" data-period="month">Bulan ini</button><button class="filter-btn" data-period="week">7 hari</button></div>
+    <div class="filter-row two"><button class="filter-btn active" data-view="list">Timeline</button><button class="filter-btn" data-view="cat">Per kategori</button></div>
+    <div id="content"><div class="loading">Memuat</div></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <span>Budget per kategori</span>
+      <button class="btn-secondary micro" onclick="openBudgetModal()">Atur</button>
+    </div>
+    <div id="budget-list"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">🛠 Alat</div>
+    <div style="display:grid;gap:8px;">
+      <button class="btn-secondary" onclick="exportCSV()">📥 Download CSV</button>
+      <button class="btn-secondary" onclick="copyAnalysis()">📋 Copy ringkasan bulanan</button>
+      <button class="btn-secondary" onclick="openFamilyModal()">🧡 Atur mode keluarga & foto</button>
+      <button class="btn-secondary" onclick="openNotificationModal()">🔔 Atur notifikasi keluarga</button>
+      <button class="btn-secondary" onclick="logout()" style="color:var(--danger);">🔒 Kunci dashboard</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="edit-modal"><div class="modal">
+  <div class="modal-header"><h2>Edit pengeluaran</h2><button class="modal-close" onclick="closeModal('edit-modal')">×</button></div>
+  <label>Nominal</label><input type="text" id="edit-amount" inputmode="numeric">
+  <label>Untuk apa?</label><input type="text" id="edit-note">
+  <label>Lokasi</label><div class="opt-grid"><button class="opt-btn" data-edit-loc="rantau">🧳 Rantau</button><button class="opt-btn" data-edit-loc="rumah">🏠 Rumah</button></div>
+  <label>Kategori</label><div class="opt-grid" id="edit-cats"></div>
+  <button class="save-btn" onclick="saveEdit()">Simpan perubahan</button><div class="msg" id="edit-msg"></div>
+</div></div>
+
+<div class="modal-overlay" id="budget-modal"><div class="modal">
+  <div class="modal-header"><h2>Atur budget kategori</h2><button class="modal-close" onclick="closeModal('budget-modal')">×</button></div>
+  <p class="tiny-muted">Set 0 untuk hapus budget kategori. Auto-save saat keluar dari field.</p>
+  <div id="budget-edit-list"></div>
+</div></div>
+
+<div class="modal-overlay" id="tpl-modal"><div class="modal">
+  <div class="modal-header"><h2>Pengeluaran rutin baru</h2><button class="modal-close" onclick="closeModal('tpl-modal')">×</button></div>
+  <label>Nama template</label><input type="text" id="tpl-label" placeholder="contoh: Bayar listrik">
+  <label>Nominal</label><input type="text" id="tpl-amount" inputmode="numeric">
+  <label>Lokasi</label><div class="opt-grid"><button class="opt-btn" data-tpl-loc="rantau">🧳 Rantau</button><button class="opt-btn" data-tpl-loc="rumah">🏠 Rumah</button></div>
+  <label>Kategori</label><div class="opt-grid" id="tpl-cats"></div>
+  <button class="save-btn" onclick="saveTemplate()">Simpan template</button><div class="msg" id="tpl-msg"></div>
+</div></div>
+
+<div class="modal-overlay" id="income-modal"><div class="modal">
+  <div class="modal-header"><h2>Catat uang masuk</h2><button class="modal-close" onclick="closeModal('income-modal')">×</button></div>
+  <label>Nominal</label><input type="text" id="income-amount" inputmode="numeric" placeholder="contoh: 3.500.000">
+  <label>Sumber</label><input type="text" id="income-source" placeholder="contoh: Gaji / Uang rumah">
+  <label>Untuk</label><div class="opt-grid"><button class="opt-btn" data-income-loc="rumah">🏠 Rumah</button><button class="opt-btn" data-income-loc="rantau">🧳 Rantau</button></div>
+  <label>Catatan</label><input type="text" id="income-note" placeholder="opsional">
+  <button class="save-btn" onclick="saveIncome()">Simpan uang masuk</button><div class="msg" id="income-msg"></div>
+</div></div>
+
+<div class="modal-overlay" id="target-modal"><div class="modal">
+  <div class="modal-header"><h2>Target tabungan baru</h2><button class="modal-close" onclick="closeModal('target-modal')">×</button></div>
+  <label>Nama target</label><input type="text" id="target-label" placeholder="contoh: Mudik, dana darurat, sekolah anak">
+  <label>Nominal target</label><input type="text" id="target-amount" inputmode="numeric" placeholder="contoh: 5.000.000">
+  <label>Icon</label><input type="text" id="target-icon" maxlength="2" placeholder="contoh: 🏡 / 🚗 / 🎒">
+  <label>Catatan</label><input type="text" id="target-note" placeholder="contoh: Diisi dari sisa gaji setiap bulan">
+  <button class="save-btn" onclick="saveTarget()">Simpan target</button><div class="msg" id="target-msg"></div>
+</div></div>
+
+<div class="modal-overlay" id="saving-modal"><div class="modal">
+  <div class="modal-header"><h2>Setor ke target</h2><button class="modal-close" onclick="closeModal('saving-modal')">×</button></div>
+  <div class="saving-target-name" id="saving-target-name">Target</div>
+  <label>Nominal setoran</label><input type="text" id="saving-amount" inputmode="numeric" placeholder="contoh: 250.000">
+  <label>Sumber uang</label><input type="text" id="saving-source" placeholder="contoh: Sisa gaji / Bonus / THR">
+  <label>Catatan</label><input type="text" id="saving-note" placeholder="opsional">
+  <button class="save-btn" onclick="saveSavingEntry()">Simpan setoran</button><div class="msg" id="saving-msg"></div>
+</div></div>
+
+<div class="modal-overlay" id="bill-modal"><div class="modal">
+  <div class="modal-header"><h2>Jatuh tempo baru</h2><button class="modal-close" onclick="closeModal('bill-modal')">×</button></div>
+  <label>Nama</label><input type="text" id="bill-label" placeholder="contoh: Listrik">
+  <label>Nominal perkiraan</label><input type="text" id="bill-amount" inputmode="numeric">
+  <label>Tanggal setiap bulan</label><input type="text" id="bill-day" inputmode="numeric" placeholder="contoh: 5">
+  <label>Lokasi</label><div class="opt-grid"><button class="opt-btn" data-bill-loc="rumah">🏠 Rumah</button><button class="opt-btn" data-bill-loc="rantau">🧳 Rantau</button></div>
+  <label>Kategori</label><div class="opt-grid" id="bill-cats"></div>
+  <label>Catatan</label><input type="text" id="bill-note" placeholder="opsional">
+  <button class="save-btn" onclick="saveBill()">Simpan jatuh tempo</button><div class="msg" id="bill-msg"></div>
+</div></div>
+
+
+<div class="modal-overlay" id="family-modal"><div class="modal">
+  <div class="modal-header"><h2>Mode keluarga & foto</h2><button class="modal-close" onclick="closeModal('family-modal')">×</button></div>
+  <p class="tiny-muted">Upload foto langsung dari HP. Foto otomatis dicrop kotak, dikompres, lalu disimpan ke Google Sheet supaya tampil di HP kamu dan istri.</p>
+  <div class="family-photo-grid">
+    <div class="family-photo-card">
+      <div id="photo-preview-suami" class="photo-preview-wrap"></div>
+      <label>Foto suami</label>
+      <input type="file" id="photo-input-suami" accept="image/*" onchange="uploadFamilyPhoto('suami', this)">
+      <button class="btn-secondary micro" onclick="removeFamilyPhoto('suami')">Hapus foto</button>
+    </div>
+    <div class="family-photo-card">
+      <div id="photo-preview-istri" class="photo-preview-wrap"></div>
+      <label>Foto istri</label>
+      <input type="file" id="photo-input-istri" accept="image/*" onchange="uploadFamilyPhoto('istri', this)">
+      <button class="btn-secondary micro" onclick="removeFamilyPhoto('istri')">Hapus foto</button>
+    </div>
+  </div>
+  <div class="msg" id="family-msg"></div>
+</div></div>
+
+
+<div class="modal-overlay" id="notification-modal"><div class="modal">
+  <div class="modal-header"><h2>Notifikasi keluarga</h2><button class="modal-close" onclick="closeModal('notification-modal')">×</button></div>
+  <p class="tiny-muted">Notifikasi dikirim dari Google Apps Script lewat Telegram. Kalau Telegram belum lengkap/gagal, aplikasi bisa memakai email cadangan.</p>
+
+  <label>Telegram Bot Token</label>
+  <input type="text" id="notif-bot-token" placeholder="contoh: 123456:ABC... dari BotFather">
+
+  <label>Chat ID suami</label>
+  <input type="text" id="notif-chat-suami" placeholder="contoh: 123456789">
+
+  <label>Chat ID istri</label>
+  <input type="text" id="notif-chat-istri" placeholder="contoh: 987654321">
+
+  <label>Email suami sebagai cadangan</label>
+  <input type="text" id="notif-email-suami" placeholder="opsional">
+
+  <label>Email istri sebagai cadangan</label>
+  <input type="text" id="notif-email-istri" placeholder="opsional">
+
+  <label>Link aplikasi / dashboard</label>
+  <input type="text" id="notif-app-link" placeholder="opsional, contoh: https://username.github.io/expense-tracker/admin.html">
+
+  <div class="notif-checks">
+    <label class="check-line"><input type="checkbox" id="notif-expense-rumah"> Pengeluaran rumah → notif ke suami</label>
+    <label class="check-line"><input type="checkbox" id="notif-expense-rantau"> Pengeluaran rantau → notif ke istri</label>
+    <label class="check-line"><input type="checkbox" id="notif-msg-suami"> Pesan istri → notif ke suami</label>
+    <label class="check-line"><input type="checkbox" id="notif-msg-istri"> Pesan suami → notif ke istri</label>
+    <label class="check-line"><input type="checkbox" id="notif-email-fallback"> Pakai email cadangan kalau Telegram gagal/kosong</label>
+  </div>
+
+  <button class="save-btn" onclick="saveNotificationSettings()">Simpan pengaturan notifikasi</button>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
+    <button class="btn-secondary" onclick="testNotification('suami')">Tes ke suami</button>
+    <button class="btn-secondary" onclick="testNotification('istri')">Tes ke istri</button>
+  </div>
+  <div class="msg" id="notif-msg"></div>
+</div></div>
+
+<script src="config.js?v=family381"></script>
+<script src="shared.js?v=family381"></script>
+<script>
+let selectedCat = null, selectedLoc = null;
+let editSelectedCat = null, editSelectedLoc = null, editingId = null;
+let tplSelectedCat = null, tplSelectedLoc = null;
+let incomeLoc = null, billSelectedCat = null, billLoc = null, savingTargetId = null;
+let currentPeriod = 'month', currentScope = 'all', currentView = 'list';
+let cachedData = [], allDataCache = [], monthAll = [], templates = [], budgets = {}, incomes = [], savingsTargets = [], bills = [];
+let isSaving = false;
+
+function checkPwd() {
+  const v = document.getElementById('pwd').value;
+  if (v === ADMIN_PIN) { sessionStorage.setItem('unlocked','1'); showApp(); }
+  else { toast('PIN salah','err'); if (navigator.vibrate) navigator.vibrate([50,50,50]); }
+}
+function showApp() { document.getElementById('lock-screen').style.display='none'; document.getElementById('app').style.display='block'; init(); }
+function logout() { sessionStorage.removeItem('unlocked'); location.reload(); }
+if (sessionStorage.getItem('unlocked') === '1') showApp();
+document.getElementById('pwd').addEventListener('keypress', e => { if (e.key === 'Enter') checkPwd(); });
+
+async function init() {
+  await loadFamilySettings();
+  document.getElementById('family-name').textContent = typeof NAMA_KELUARGA !== 'undefined' ? NAMA_KELUARGA : 'Semua pengeluaran keluarga';
+  document.getElementById('header-family-strip').innerHTML = familyStripHtml();
+  buildCatButtons(document.getElementById('cats'), id => selectedCat = id);
+  buildCatButtons(document.getElementById('edit-cats'), id => editSelectedCat = id);
+  buildCatButtons(document.getElementById('tpl-cats'), id => tplSelectedCat = id);
+  buildCatButtons(document.getElementById('bill-cats'), id => billSelectedCat = id);
+  ['amount','edit-amount','tpl-amount','income-amount','target-amount','saving-amount','bill-amount'].forEach(id => initNumberInput(document.getElementById(id)));
+  attachQuickButtons(document.querySelector('.quick-row'), document.getElementById('amount'));
+  bindOpt('[data-loc]', 'loc', v => selectedLoc = v);
+  bindOpt('[data-edit-loc]', 'editLoc', v => editSelectedLoc = v);
+  bindOpt('[data-tpl-loc]', 'tplLoc', v => tplSelectedLoc = v);
+  bindOpt('[data-income-loc]', 'incomeLoc', v => incomeLoc = v);
+  bindOpt('[data-bill-loc]', 'billLoc', v => billLoc = v);
+  document.getElementById('save').onclick = saveExpense;
+  bindFilters(); installReminderUI('suami');
+  ['edit-modal','budget-modal','tpl-modal','income-modal','target-modal','saving-modal','bill-modal','family-modal','notification-modal'].forEach(id => document.getElementById(id).addEventListener('click', e => { if(e.target.id===id) closeModal(id); }));
+  if (typeof API_URL === 'undefined' || !API_URL || API_URL.includes('PASTE_URL')) document.getElementById('content').innerHTML = '<div class="empty">⚠ API URL belum diset. Edit <code>config.js</code> dulu.</div>';
+  else loadAll();
+}
+function bindOpt(selector, key, cb) { document.querySelectorAll(selector).forEach(btn => btn.onclick = () => { cb(btn.dataset[key]); document.querySelectorAll(selector).forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); if(navigator.vibrate) navigator.vibrate(10); }); }
+function bindFilters() {
+  document.querySelectorAll('[data-period]').forEach(btn => btn.onclick = () => { currentPeriod = btn.dataset.period; document.querySelectorAll('[data-period]').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); document.getElementById('period-label').textContent = currentPeriod==='month'?'Total bulan ini':'Total 7 hari terakhir'; loadData(); });
+  document.querySelectorAll('[data-scope]').forEach(btn => btn.onclick = () => { currentScope = btn.dataset.scope; document.querySelectorAll('[data-scope]').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); loadData(); });
+  document.querySelectorAll('[data-view]').forEach(btn => btn.onclick = () => { currentView = btn.dataset.view; document.querySelectorAll('[data-view]').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderContent(); });
+}
+async function loadAll() { await Promise.all([loadData(), loadTemplates(), loadBudgets(), loadMessages(), loadSavingsTargets(), loadBills()]); }
+async function loadData() {
+  document.getElementById('content').innerHTML = '<div class="loading">Memuat</div>';
+  const [filteredRes, allRes, monthRes, incRes, chartRes] = await Promise.all([
+    safeGet({ type:'expenses', scope:currentScope, period:currentPeriod }), safeGet({ type:'expenses', scope:'all', period:currentPeriod }), safeGet({ type:'expenses', scope:'all', period:'month' }), safeGet({ type:'incomes', scope:'all', period:'month' }), safeGet({ type:'summary', scope:'all', period:'week' })
+  ]);
+  cachedData = filteredRes.data || []; allDataCache = allRes.data || []; monthAll = monthRes.data || []; incomes = incRes.data || [];
+  renderSummary(); renderWallet(); renderContent(); renderBudgetList(); renderInsights();
+  renderMiniChart(document.getElementById('chart'), chartRes.daily || [], 'total');
+}
+async function loadTemplates(){ const res=await safeGet({type:'templates'}); templates=res.data||[]; renderTemplates(); }
+async function loadBudgets(){ const res=await safeGet({type:'budgets'}); budgets=Object.assign({}, typeof BUDGET_DEFAULTS !== 'undefined' ? BUDGET_DEFAULTS : {}, res.data || {}); renderBudgetList(); }
+async function loadMessages(){ const res=await safeGet({type:'messages', limit:12}); renderMessages(res.data||[]); }
+async function loadSavingsTargets(){ const res=await safeGet({type:'savings_targets', period:'month'}); savingsTargets=res.data||[]; renderTarget(); }
+async function loadBills(){ const res=await safeGet({type:'bills'}); bills=res.data||[]; document.getElementById('bills-list').innerHTML=renderBillsList(bills,false); }
+function renderSummary(){ const total=sumAmount(allDataCache), rantau=sumAmount(allDataCache.filter(e=>e.location==='rantau')), rumah=sumAmount(allDataCache.filter(e=>e.location==='rumah')); const limit=currentPeriod==='month'?(typeof BUDGET_TOTAL!=='undefined'?BUDGET_TOTAL:0):Math.max(1,(typeof BUDGET_TOTAL!=='undefined'?BUDGET_TOTAL:0)/4); const p=pct(total,limit); document.getElementById('total').textContent=fmtRp(total); document.getElementById('sum-rantau').textContent=fmtRp(rantau); document.getElementById('sum-rumah').textContent=fmtRp(rumah); document.getElementById('progress').style.width=clamp(p,0,100)+'%'; document.getElementById('progress').className='progress-fill '+progressClass(p); document.getElementById('meta').textContent=limit?Math.round(p)+'% dari budget '+fmtRp(limit):allDataCache.length+' transaksi'; }
+function renderWallet(){ const masuk=sumAmount(incomes), keluar=sumAmount(monthAll), sisa=masuk-keluar; document.getElementById('wallet-in').textContent=fmtRp(masuk); document.getElementById('wallet-out').textContent=fmtRp(keluar); document.getElementById('wallet-left').textContent=fmtRp(sisa); document.getElementById('income-list').innerHTML = incomes.length ? incomes.slice(0,4).map(i=>'<div class="income-mini"><span>'+escapeHtml(i.source)+' · '+locationLabel(i.location)+'</span><b>'+fmtRp(i.amount)+'</b><button onclick="deleteIncomeById(\''+i.id+'\')">×</button></div>').join('') : '<div class="tiny-muted">Belum ada uang masuk dicatat bulan ini.</div>'; }
+function renderTarget(){ const el=document.getElementById('target-wrap'); if(el) el.innerHTML=renderSavingsTargets(savingsTargets,{admin:true}); }
+function renderMessages(rows){ const list=document.getElementById('messages-list'); if(!rows.length){list.innerHTML='<div class="empty">Belum ada pesan</div>'; return;} list.innerHTML=rows.map(m=>'<div class="love-note"><div><b>'+escapeHtml(shortName(m.from)||'Keluarga')+'</b><span>'+fmtDate(m.timestamp)+' · '+fmtTime(m.timestamp)+' → '+escapeHtml(m.to||'')+'</span></div><p>'+escapeHtml(m.message)+'</p></div>').join(''); }
+function renderInsights(){ const lines=insightFrom(monthAll,incomes); document.getElementById('insight-list').innerHTML='<ul class="insight-list">'+lines.map(l=>'<li>'+escapeHtml(l)+'</li>').join('')+'</ul>'; }
+function renderContent(){ document.getElementById('content').innerHTML=currentView==='cat'?renderCategorySummary(cachedData):renderTimeline(cachedData,{editable:true}); }
+function renderTemplates(){ const card=document.getElementById('templates-card'), list=document.getElementById('templates-list'); card.style.display='block'; if(!templates.length){list.innerHTML='<div class="empty">Belum ada template. Klik Tambah.</div>'; return;} list.innerHTML='<div class="template-chips">'+templates.map((t,i)=>{const cat=getCategoryMeta(t.category); return '<button class="template-chip" onclick="useTemplate('+i+')">'+iconHtml(cat.icon,14)+'<span>'+escapeHtml(t.label)+'</span><b>'+fmtRp(t.amount)+'</b></button><button class="chip-delete" onclick="deleteTemplateById(\''+t.id+'\')">×</button>';}).join('')+'</div>'; }
+function renderBudgetList(){ const list=document.getElementById('budget-list'); if(!list) return; const byCat={}; monthAll.forEach(e=>byCat[e.category]=(byCat[e.category]||0)+(Number(e.amount)||0)); list.innerHTML=CATEGORIES.map(c=>{const limit=Number(budgets[c.id])||0, used=byCat[c.id]||0, p=pct(used,limit); return '<div class="budget-row"><div class="budget-top"><span>'+iconHtml(c.icon,16)+' '+escapeHtml(c.label)+'</span><b>'+fmtRp(used)+' / '+fmtRp(limit)+'</b></div>'+progressHtml(used,limit,limit?Math.round(p)+'%':'Belum ada budget')+'</div>';}).join(''); const edit=document.getElementById('budget-edit-list'); if(edit) edit.innerHTML=CATEGORIES.map(c=>'<label>'+escapeHtml(c.label)+'</label><input type="text" data-budget-cat="'+c.id+'" value="'+fmtNum(budgets[c.id]||0)+'">').join(''); if(edit) edit.querySelectorAll('[data-budget-cat]').forEach(inp=>{ initNumberInput(inp); inp.onblur=()=>setBudgetValue(inp.dataset.budgetCat,parseNum(inp.value)); }); }
+async function saveExpense(){ if(isSaving)return; const amount=parseNum(document.getElementById('amount').value), note=document.getElementById('note').value.trim(), msg=document.getElementById('msg'), btn=document.getElementById('save'); if(!amount){msg.className='msg err';msg.textContent='Nominal kosong';return;} if(!selectedLoc){msg.className='msg err';msg.textContent='Pilih lokasi';return;} if(!selectedCat){msg.className='msg err';msg.textContent='Pilih kategori';return;} isSaving=true;btn.disabled=true;btn.textContent='Menyimpan…'; try{ await safePost({action:'add',amount,note:note||getCategoryMeta(selectedCat).label,category:selectedCat,location:selectedLoc,who:NAMA_SUAMI,message:''}); toast('✓ Tersimpan'); document.getElementById('amount').value=''; document.getElementById('note').value=''; selectedCat=null;selectedLoc=null; document.querySelectorAll('#cats .opt-btn,[data-loc]').forEach(x=>x.classList.remove('selected')); msg.textContent=''; await new Promise(r=>setTimeout(r,700)); loadData(); }catch(e){msg.className='msg err';msg.textContent='Gagal: '+apiErrorMessage(e);} isSaving=false;btn.disabled=false;btn.textContent='Simpan'; }
+async function useTemplate(i){ const t=templates[i]; const ok=await confirmModal('Tambah "'+t.label+'" — '+fmtRp(t.amount)+'?'); if(!ok)return; try{await safePost({action:'add',amount:t.amount,note:t.note||t.label,category:t.category,location:t.location,who:NAMA_SUAMI,message:''});toast('✓ Tersimpan');loadData();}catch(e){toast('Gagal: '+apiErrorMessage(e),'err');} }
+function openEdit(id){ const e=cachedData.find(x=>x.id===id)||allDataCache.find(x=>x.id===id); if(!e)return; editingId=id; editSelectedCat=e.category; editSelectedLoc=e.location; document.getElementById('edit-amount').value=fmtNum(e.amount); document.getElementById('edit-note').value=e.note||''; document.querySelectorAll('#edit-cats .opt-btn').forEach(b=>b.classList.toggle('selected',b.dataset.cat===e.category)); document.querySelectorAll('[data-edit-loc]').forEach(b=>b.classList.toggle('selected',b.dataset.editLoc===e.location)); openModal('edit-modal'); }
+async function saveEdit(){ const amount=parseNum(document.getElementById('edit-amount').value), msg=document.getElementById('edit-msg'); if(!amount){msg.className='msg err';msg.textContent='Nominal kosong';return;} try{await safePost({action:'update',id:editingId,amount,note:document.getElementById('edit-note').value.trim(),category:editSelectedCat,location:editSelectedLoc}); closeModal('edit-modal'); toast('✓ Diperbarui'); loadData();}catch(e){msg.className='msg err';msg.textContent='Gagal: '+apiErrorMessage(e);} }
+async function deleteExpenseById(id){const ok=await confirmModal('Hapus transaksi ini?');if(!ok)return;try{await safePost({action:'delete',id});toast('Dihapus');loadData();}catch(e){toast('Gagal hapus: '+apiErrorMessage(e),'err');}}
+async function setBudgetValue(cat,val){try{budgets[cat]=val;await safePost({action:'budget_set',category:cat,monthly_limit:val});renderBudgetList();toast('Budget disimpan');}catch(e){toast('Gagal simpan budget','err');}}
+function openBudgetModal(){renderBudgetList();openModal('budget-modal');}
+function openTemplateModal(){tplSelectedCat=null;tplSelectedLoc=null;document.getElementById('tpl-label').value='';document.getElementById('tpl-amount').value='';document.querySelectorAll('#tpl-cats .opt-btn,[data-tpl-loc]').forEach(b=>b.classList.remove('selected'));openModal('tpl-modal');}
+async function saveTemplate(){const label=document.getElementById('tpl-label').value.trim(), amount=parseNum(document.getElementById('tpl-amount').value), msg=document.getElementById('tpl-msg'); if(!label||!amount||!tplSelectedCat||!tplSelectedLoc){msg.className='msg err';msg.textContent='Lengkapi template';return;} try{await safePost({action:'template_add',label,amount,category:tplSelectedCat,location:tplSelectedLoc,note:label}); closeModal('tpl-modal');toast('Template disimpan');loadTemplates();}catch(e){msg.className='msg err';msg.textContent='Gagal: '+apiErrorMessage(e);}}
+async function deleteTemplateById(id){const ok=await confirmModal('Hapus template ini?'); if(!ok)return; try{await safePost({action:'template_delete',id});toast('Template dihapus');loadTemplates();}catch(e){toast('Gagal hapus','err');}}
+function openIncomeModal(){incomeLoc=null;document.getElementById('income-amount').value='';document.getElementById('income-source').value='';document.getElementById('income-note').value='';document.querySelectorAll('[data-income-loc]').forEach(b=>b.classList.remove('selected'));openModal('income-modal');}
+async function saveIncome(){const amount=parseNum(document.getElementById('income-amount').value), source=document.getElementById('income-source').value.trim(), note=document.getElementById('income-note').value.trim(), msg=document.getElementById('income-msg'); if(!amount||!source||!incomeLoc){msg.className='msg err';msg.textContent='Lengkapi uang masuk';return;} try{await safePost({action:'income_add',amount,source,location:incomeLoc,who:NAMA_SUAMI,note});closeModal('income-modal');toast('Uang masuk disimpan');loadData();}catch(e){msg.className='msg err';msg.textContent='Gagal: '+apiErrorMessage(e);}}
+async function deleteIncomeById(id){const ok=await confirmModal('Hapus uang masuk ini?'); if(!ok)return; try{await safePost({action:'income_delete',id});toast('Dihapus');loadData();}catch(e){toast('Gagal hapus','err');}}
+function openTargetModal(){document.getElementById('target-label').value=''; document.getElementById('target-amount').value=''; document.getElementById('target-icon').value='🎯'; document.getElementById('target-note').value=''; document.getElementById('target-msg').textContent=''; openModal('target-modal');}
+async function saveTarget(){const label=document.getElementById('target-label').value.trim(), amount=parseNum(document.getElementById('target-amount').value), icon=document.getElementById('target-icon').value.trim()||'🎯', note=document.getElementById('target-note').value.trim(), msg=document.getElementById('target-msg'); if(!label||!amount){msg.className='msg err';msg.textContent='Lengkapi target';return;} try{await safePost({action:'savings_target_add',label,target_amount:amount,icon,note});closeModal('target-modal');toast('Target ditambahkan');loadSavingsTargets();}catch(e){msg.className='msg err';msg.textContent='Gagal: '+apiErrorMessage(e);}}
+function openSavingModal(id){const t=savingsTargets.find(x=>x.id===id); if(!t)return; savingTargetId=id; document.getElementById('saving-target-name').textContent=(t.icon||'🎯')+' '+t.label; document.getElementById('saving-amount').value=''; document.getElementById('saving-source').value='Sisa gaji'; document.getElementById('saving-note').value=''; document.getElementById('saving-msg').textContent=''; openModal('saving-modal');}
+async function saveSavingEntry(){const amount=parseNum(document.getElementById('saving-amount').value), source=document.getElementById('saving-source').value.trim(), note=document.getElementById('saving-note').value.trim(), msg=document.getElementById('saving-msg'); if(!savingTargetId||!amount){msg.className='msg err';msg.textContent='Pilih target dan isi nominal';return;} try{await safePost({action:'savings_entry_add',target_id:savingTargetId,amount,source:source||'Sisa gaji',who:NAMA_SUAMI,note});closeModal('saving-modal');toast('Setoran target disimpan');loadSavingsTargets();}catch(e){msg.className='msg err';msg.textContent='Gagal: '+apiErrorMessage(e);}}
+async function deleteTargetById(id){const ok=await confirmModal('Hapus target ini? Setoran lama tetap aman di sheet SavingsEntries.'); if(!ok)return; try{await safePost({action:'savings_target_delete',id});toast('Target dihapus');loadSavingsTargets();}catch(e){toast('Gagal hapus target','err');}}
+async function deleteSavingEntryById(id){const ok=await confirmModal('Hapus setoran ini?'); if(!ok)return; try{await safePost({action:'savings_entry_delete',id});toast('Setoran dihapus');loadSavingsTargets();}catch(e){toast('Gagal hapus setoran','err');}}
+function openBillModal(){billSelectedCat=null;billLoc=null;['bill-label','bill-amount','bill-day','bill-note'].forEach(id=>document.getElementById(id).value='');document.querySelectorAll('#bill-cats .opt-btn,[data-bill-loc]').forEach(b=>b.classList.remove('selected'));openModal('bill-modal');}
+async function saveBill(){const label=document.getElementById('bill-label').value.trim(), amount=parseNum(document.getElementById('bill-amount').value), due_day=parseNum(document.getElementById('bill-day').value), note=document.getElementById('bill-note').value.trim(), msg=document.getElementById('bill-msg'); if(!label||!amount||!due_day||!billSelectedCat||!billLoc){msg.className='msg err';msg.textContent='Lengkapi jatuh tempo';return;} try{await safePost({action:'bill_add',label,amount,due_day,category:billSelectedCat,location:billLoc,note});closeModal('bill-modal');toast('Jatuh tempo disimpan');loadBills();}catch(e){msg.className='msg err';msg.textContent='Gagal: '+apiErrorMessage(e);}}
+async function deleteBillById(id){const ok=await confirmModal('Hapus jatuh tempo ini?'); if(!ok)return; try{await safePost({action:'bill_delete',id});toast('Dihapus');loadBills();}catch(e){toast('Gagal hapus','err');}}
+async function sendQuickLove(){const el=document.getElementById('quick-message'), msg=el.value.trim(); if(!msg){toast('Tulis pesannya dulu','err');return;} try{await safePost({action:'message_add',from:NAMA_SUAMI,to:'istri',message:msg});el.value='';toast('Pesan terkirim ❤');loadMessages();}catch(e){toast('Gagal kirim: '+apiErrorMessage(e),'err');}}
+
+function openFamilyModal(){
+  renderFamilyPhotoSettings();
+  openModal('family-modal');
+}
+function renderFamilyPhotoSettings(){
+  const suami = document.getElementById('photo-preview-suami');
+  const istri = document.getElementById('photo-preview-istri');
+  if (suami) suami.innerHTML = avatarHtml(typeof NAMA_SUAMI !== 'undefined' ? NAMA_SUAMI : 'Suami', getFamilyPhoto('suami'), 'suami big');
+  if (istri) istri.innerHTML = avatarHtml(typeof NAMA_ISTRI !== 'undefined' ? NAMA_ISTRI : 'Istri', getFamilyPhoto('istri'), 'istri big');
+}
+async function uploadFamilyPhoto(role, input){
+  const msg = document.getElementById('family-msg');
+  const file = input && input.files && input.files[0];
+  if (!file) return;
+  msg.className = 'msg';
+  msg.textContent = 'Memproses foto…';
+  try {
+    const dataUrl = await imageFileToDataUrl(file, 240, 0.78);
+    await saveFamilyPhoto(role, dataUrl);
+    refreshFamilyStrip();
+    renderFamilyPhotoSettings();
+    renderTarget();
+    msg.className = 'msg ok';
+    msg.textContent = 'Foto tersimpan dan akan tampil di kedua aplikasi.';
+    toast('Foto mode keluarga diperbarui ❤');
+  } catch(e) {
+    msg.className = 'msg err';
+    msg.textContent = apiErrorMessage(e);
+  }
+  input.value = '';
+}
+async function removeFamilyPhoto(role){
+  const ok = await confirmModal('Hapus foto ini? Avatar inisial akan dipakai lagi.');
+  if (!ok) return;
+  const msg = document.getElementById('family-msg');
+  try {
+    await saveFamilyPhoto(role, '');
+    refreshFamilyStrip();
+    renderFamilyPhotoSettings();
+    renderTarget();
+    msg.className = 'msg ok';
+    msg.textContent = 'Foto dihapus.';
+  } catch(e) {
+    msg.className = 'msg err';
+    msg.textContent = apiErrorMessage(e);
+  }
+}
+
+
+// ===== Notifikasi Keluarga v3.8 =====
+function notifVal(key, fallback) {
+  const v = familySettings && familySettings[key];
+  return (v === undefined || v === null || v === '') ? fallback : v;
+}
+function notifBool(key, fallback) {
+  const v = notifVal(key, fallback ? '1' : '0');
+  return String(v).toLowerCase() === '1' || String(v).toLowerCase() === 'true' || String(v).toLowerCase() === 'yes' || String(v).toLowerCase() === 'on';
+}
+function setNotifInput(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.value = val || '';
+}
+function setNotifCheck(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.checked = !!val;
+}
+function openNotificationModal() {
+  setNotifInput('notif-bot-token', notifVal('notif_telegram_bot_token', ''));
+  setNotifInput('notif-chat-suami', notifVal('notif_chat_suami', ''));
+  setNotifInput('notif-chat-istri', notifVal('notif_chat_istri', ''));
+  setNotifInput('notif-email-suami', notifVal('notif_email_suami', ''));
+  setNotifInput('notif-email-istri', notifVal('notif_email_istri', ''));
+  setNotifInput('notif-app-link', notifVal('notif_app_link', location.origin + location.pathname));
+  setNotifCheck('notif-expense-rumah', notifBool('notif_expense_rumah_to_suami', true));
+  setNotifCheck('notif-expense-rantau', notifBool('notif_expense_rantau_to_istri', false));
+  setNotifCheck('notif-msg-suami', notifBool('notif_message_to_suami', true));
+  setNotifCheck('notif-msg-istri', notifBool('notif_message_to_istri', true));
+  setNotifCheck('notif-email-fallback', notifBool('notif_email_fallback', true));
+  const msg = document.getElementById('notif-msg');
+  msg.className = 'msg'; msg.textContent = '';
+  openModal('notification-modal');
+}
+function notifFieldValue(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+function notifCheckValue(id) {
+  const el = document.getElementById(id);
+  return el && el.checked ? '1' : '0';
+}
+async function saveNotificationSettings(silent) {
+  const msg = document.getElementById('notif-msg');
+  if (msg && !silent) { msg.className = 'msg'; msg.textContent = 'Menyimpan…'; }
+  const settings = {
+    notif_telegram_bot_token: notifFieldValue('notif-bot-token'),
+    notif_chat_suami: notifFieldValue('notif-chat-suami'),
+    notif_chat_istri: notifFieldValue('notif-chat-istri'),
+    notif_email_suami: notifFieldValue('notif-email-suami'),
+    notif_email_istri: notifFieldValue('notif-email-istri'),
+    notif_app_link: notifFieldValue('notif-app-link'),
+    notif_expense_rumah_to_suami: notifCheckValue('notif-expense-rumah'),
+    notif_expense_rantau_to_istri: notifCheckValue('notif-expense-rantau'),
+    notif_message_to_suami: notifCheckValue('notif-msg-suami'),
+    notif_message_to_istri: notifCheckValue('notif-msg-istri'),
+    notif_email_fallback: notifCheckValue('notif-email-fallback')
+  };
+  for (const [key, value] of Object.entries(settings)) {
+    await safePost({ action: 'setting_set', key, value });
+    familySettings[key] = value;
+  }
+  if (msg && !silent) { msg.className = 'msg ok'; msg.textContent = 'Pengaturan notifikasi tersimpan.'; }
+  if (!silent) toast('Notifikasi keluarga disimpan');
+}
+async function testNotification(target) {
+  const msg = document.getElementById('notif-msg');
+  try {
+    await saveNotificationSettings(true);
+    msg.className = 'msg'; msg.textContent = 'Mengirim tes ke ' + target + '…';
+    const res = await safePost({ action: 'notification_test', target });
+    if (res.ok) {
+      msg.className = 'msg ok'; msg.textContent = 'Tes terkirim ke ' + target + '. Cek Telegram/email.';
+      toast('Tes notifikasi terkirim');
+    } else {
+      msg.className = 'msg err'; msg.textContent = 'Gagal tes: ' + (res.error || JSON.stringify(res.result || res));
+    }
+  } catch (e) {
+    msg.className = 'msg err'; msg.textContent = 'Gagal tes: ' + apiErrorMessage(e);
+  }
+}
+
+function exportCSV(){ const csv=toCSV(monthAll.length?monthAll:allDataCache); downloadCSV('expense-keluarga-'+localDateKey(new Date())+'.csv',csv); }
+async function copyAnalysis(){ const lines=insightFrom(monthAll,incomes); const txt='Ringkasan keuangan keluarga bulan ini\n\n'+lines.join('\n')+'\n'+savingsSummaryLine(savingsTargets)+'\n\nTotal rantau: '+fmtRp(sumAmount(monthAll.filter(e=>e.location==='rantau')))+'\nTotal rumah: '+fmtRp(sumAmount(monthAll.filter(e=>e.location==='rumah'))); try{await navigator.clipboard.writeText(txt);toast('Ringkasan dicopy');}catch(e){prompt('Copy ringkasan ini:',txt);} }
+function openModal(id){document.getElementById(id).classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+</script>
+</body>
+</html>
