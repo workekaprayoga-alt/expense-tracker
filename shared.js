@@ -356,62 +356,9 @@ function locationLabel(loc) {
   return 'Keluarga';
 }
 
-
-// ===== Cashflow v3.8.2 =====
-function normText(v) {
-  return String(v || '').toLowerCase().trim();
-}
-
-function isKirimKeRumah(row) {
-  const cat = normText(row && row.category);
-  const note = normText(row && row.note);
-  return cat === 'kirim' || cat === 'kirim ke rumah' || note.includes('kirim ke rumah');
-}
-
-function incomeByLocation(incomeRows, loc) {
-  return sumAmount((incomeRows || []).filter(i => normText(i.location) === loc));
-}
-
-function expenseByLocation(expenseRows, loc, options) {
-  options = options || {};
-  return sumAmount((expenseRows || []).filter(e => {
-    if (normText(e.location) !== loc) return false;
-    if (options.excludeKirim && isKirimKeRumah(e)) return false;
-    return true;
-  }));
-}
-
-function transferToHome(expenseRows) {
-  return sumAmount((expenseRows || []).filter(isKirimKeRumah));
-}
-
-function calcHomeCashflow(expenseRows, incomeRows) {
-  const transferIn = transferToHome(expenseRows || []);
-  const directIn = incomeByLocation(incomeRows || [], 'rumah');
-  const masuk = transferIn + directIn;
-  const keluar = expenseByLocation(expenseRows || [], 'rumah', { excludeKirim: true });
-  return { masuk, transferIn, directIn, keluar, sisa: masuk - keluar, percent: masuk > 0 ? (keluar / masuk) * 100 : 0 };
-}
-
-function calcRantauCashflow(expenseRows, incomeRows) {
-  const masuk = incomeByLocation(incomeRows || [], 'rantau');
-  const keluar = expenseByLocation(expenseRows || [], 'rantau');
-  return { masuk, keluar, sisa: masuk - keluar, percent: masuk > 0 ? (keluar / masuk) * 100 : 0 };
-}
-
-function calcFamilyCashflow(expenseRows, incomeRows) {
-  const masuk = sumAmount(incomeRows || []);
-  const keluar = sumAmount(expenseRows || []);
-  return { masuk, keluar, sisa: masuk - keluar, percent: masuk > 0 ? (keluar / masuk) * 100 : 0 };
-}
-
-function cashflowNote(flow, label) {
-  if (!flow || !flow.masuk) return 'Uang masuk ' + (label || 'bulan ini') + ' belum dicatat.';
-  return 'Sudah terpakai ' + (flow.percent || 0).toFixed(1).replace('.', ',') + '% dari uang masuk.';
-}
-
 function expenseBudgetLimit(scope) {
-  return 0;
+  if (scope === 'rumah') return typeof BUDGET_RUMAH !== 'undefined' ? BUDGET_RUMAH : 0;
+  return typeof BUDGET_TOTAL !== 'undefined' ? BUDGET_TOTAL : 0;
 }
 
 function progressClass(percent) {
@@ -599,6 +546,9 @@ function renderSavingsTargets(targets, options) {
   targets = targets || [];
   const admin = !!options.admin;
   const compact = !!options.compact;
+  const canContribute = !!options.canContribute || admin;
+  const canDelete = !!options.canDelete || admin;
+  const showVisibility = !!options.showVisibility;
   if (!targets.length) {
     return '<div class="empty">Belum ada target tabungan. Tambahkan target seperti mudik, dana darurat, sekolah anak, atau liburan keluarga.</div>';
   }
@@ -611,16 +561,84 @@ function renderSavingsTargets(targets, options) {
     const savedMonth = Number(t.saved_month) || 0;
     const progress = pct(saved, target);
     const left = Math.max(0, target - saved);
-    const entries = (t.entries_month || []).slice(0, 3).map(e => '<div class="saving-entry"><span>' + escapeHtml(e.source || 'Setoran') + (e.note ? ' · ' + escapeHtml(e.note) : '') + '</span><b>' + fmtRp(e.amount) + '</b>' + (admin ? '<button onclick="deleteSavingEntryById(\'' + e.id + '\')">×</button>' : '') + '</div>').join('');
+    const visible = String(t.visible_to_wife).toLowerCase() !== 'false';
+    const entries = (t.entries_month || []).slice(0, 3).map(e => {
+      const loc = savingLocation(e);
+      return '<div class="saving-entry"><span>' + escapeHtml(e.source || 'Setoran') + ' · ' + locationLabel(loc) + (e.note ? ' · ' + escapeHtml(e.note) : '') + '</span><b>' + fmtRp(e.amount) + '</b>' + (admin ? '<button onclick="deleteSavingEntryById(\'' + e.id + '\')">×</button>' : '') + '</div>';
+    }).join('');
     return '<div class="savings-target-card">' +
-      '<div class="savings-target-top"><div class="savings-icon">' + escapeHtml(t.icon || '🎯') + '</div><div><strong>' + escapeHtml(t.label || 'Target keluarga') + '</strong>' + (t.note ? '<small>' + escapeHtml(t.note) + '</small>' : '') + '</div></div>' +
+      '<div class="savings-target-top"><div class="savings-icon">' + escapeHtml(t.icon || '🎯') + '</div><div><strong>' + escapeHtml(t.label || 'Target keluarga') + '</strong>' + (t.note ? '<small>' + escapeHtml(t.note) + '</small>' : '') + (showVisibility ? '<small>' + (visible ? 'Muncul di aplikasi istri' : 'Khusus admin') + '</small>' : '') + '</div></div>' +
       '<div class="savings-amount"><b>' + fmtRp(saved) + '</b><span>/ ' + fmtRp(target) + '</span></div>' +
       '<div class="savings-bar"><div style="width:' + clamp(progress, 0, 100) + '%"></div></div>' +
       '<div class="savings-meta"><span>Bulan ini: ' + fmtRp(savedMonth) + '</span><span>' + (left > 0 ? 'Kurang ' + fmtRp(left) : 'Tercapai ❤') + '</span></div>' +
       (entries ? '<div class="saving-entry-list">' + entries + '</div>' : '<div class="tiny-muted">Belum ada setoran bulan ini.</div>') +
-      (admin ? '<div class="savings-actions"><button class="btn-secondary micro" onclick="openSavingModal(\'' + t.id + '\')">+ Setor</button><button class="btn-secondary micro danger-text" onclick="deleteTargetById(\'' + t.id + '\')">Hapus target</button></div>' : '') +
+      (canContribute ? '<div class="savings-actions"><button class="btn-secondary micro" onclick="openSavingModal(\'' + t.id + '\')">+ Setor</button>' + (canDelete ? '<button class="btn-secondary micro danger-text" onclick="deleteTargetById(\'' + t.id + '\')">Hapus target</button>' : '') + '</div>' : '') +
       '</div>';
   }).join('') + '</div>';
+}
+
+function savingLocation(e) {
+  return String((e && (e.location || e.source_location)) || '').toLowerCase() === 'rumah' ? 'rumah' : 'rantau';
+}
+
+function flattenSavingsEntries(targets) {
+  const rows = [];
+  (targets || []).forEach(t => (t.entries_month || []).forEach(e => rows.push(e)));
+  return rows;
+}
+
+function kirimKeRumahAmount(expenses) {
+  return (expenses || []).filter(e => String(e.category || '').toLowerCase() === 'kirim')
+    .reduce((a, e) => a + (Number(e.amount) || 0), 0);
+}
+
+function rumahExpenseAmount(expenses) {
+  return (expenses || []).filter(e => String(e.location || '').toLowerCase() === 'rumah' && String(e.category || '').toLowerCase() !== 'kirim')
+    .reduce((a, e) => a + (Number(e.amount) || 0), 0);
+}
+
+function expenseAmountByScope(expenses, scope) {
+  scope = String(scope || 'all').toLowerCase();
+  let rows = expenses || [];
+  if (scope === 'rumah') rows = rows.filter(e => String(e.location || '').toLowerCase() === 'rumah' && String(e.category || '').toLowerCase() !== 'kirim');
+  else if (scope === 'rantau') rows = rows.filter(e => String(e.location || '').toLowerCase() === 'rantau');
+  return rows.reduce((a, e) => a + (Number(e.amount) || 0), 0);
+}
+
+function incomeAmountByScope(incomes, scope) {
+  scope = String(scope || 'all').toLowerCase();
+  let rows = incomes || [];
+  if (scope === 'rumah') rows = rows.filter(i => String(i.location || '').toLowerCase() === 'rumah');
+  else if (scope === 'rantau') rows = rows.filter(i => String(i.location || '').toLowerCase() === 'rantau');
+  return rows.reduce((a, i) => a + (Number(i.amount) || 0), 0);
+}
+
+function savingsAmountByScope(entries, scope) {
+  scope = String(scope || 'all').toLowerCase();
+  let rows = entries || [];
+  if (scope === 'rumah') rows = rows.filter(e => savingLocation(e) === 'rumah');
+  else if (scope === 'rantau') rows = rows.filter(e => savingLocation(e) === 'rantau');
+  return rows.reduce((a, e) => a + (Number(e.amount) || 0), 0);
+}
+
+function rumahCashflow(expenses, incomes, savingEntries) {
+  const transfer = kirimKeRumahAmount(expenses);
+  const income = incomeAmountByScope(incomes, 'rumah');
+  const masuk = transfer + income;
+  const keluar = rumahExpenseAmount(expenses);
+  const saved = savingsAmountByScope(savingEntries, 'rumah');
+  const used = keluar + saved;
+  return { transfer, income, masuk, keluar, saved, used, left: masuk - used, pct: masuk > 0 ? (used / masuk) * 100 : 0 };
+}
+
+function scopeCashflow(scope, expenses, incomes, savingEntries) {
+  scope = String(scope || 'all').toLowerCase();
+  if (scope === 'rumah') return rumahCashflow(expenses, incomes, savingEntries);
+  const masuk = incomeAmountByScope(incomes, scope);
+  const keluar = expenseAmountByScope(expenses, scope);
+  const saved = savingsAmountByScope(savingEntries, scope);
+  const used = keluar + saved;
+  return { transfer: kirimKeRumahAmount(expenses), income: masuk, masuk, keluar, saved, used, left: masuk - used, pct: masuk > 0 ? (used / masuk) * 100 : 0 };
 }
 
 function savingsSummaryLine(targets) {
