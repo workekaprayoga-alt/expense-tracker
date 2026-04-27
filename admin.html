@@ -6,10 +6,10 @@
 <meta name="theme-color" content="#a04361">
 <meta name="theme-color" content="#1c1418" media="(prefers-color-scheme: dark)">
 <title>Dashboard Keuangan Keluarga</title>
-<link rel="manifest" href="manifest.json?v=family382">
+<link rel="manifest" href="manifest.json?v=family383">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon-192.svg">
-<link rel="stylesheet" href="styles.css?v=family382">
+<link rel="stylesheet" href="styles.css?v=family383">
 </head>
 <body>
 
@@ -32,7 +32,7 @@
 
 
   <div class="card card-elevated">
-    <div class="summary-label" id="period-label">Terpakai bulan ini</div>
+    <div class="summary-label" id="period-label">Total bulan ini</div>
     <div class="summary-amount" id="total">Rp 0</div>
     <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
     <div class="summary-meta" id="meta">-</div>
@@ -50,6 +50,7 @@
     <div class="wallet-grid">
       <div><span>Uang masuk</span><b id="wallet-in">Rp 0</b></div>
       <div><span>Pengeluaran</span><b id="wallet-out">Rp 0</b></div>
+      <div><span>Disisihkan</span><b id="wallet-saved">Rp 0</b></div>
       <div class="wallet-wide"><span>Sisa tercatat</span><b id="wallet-left">Rp 0</b></div>
     </div>
     <div id="income-list" class="income-mini-list"></div>
@@ -179,6 +180,7 @@
   <label>Nominal target</label><input type="text" id="target-amount" inputmode="numeric" placeholder="contoh: 5.000.000">
   <label>Icon</label><input type="text" id="target-icon" maxlength="2" placeholder="contoh: 🏡 / 🚗 / 🎒">
   <label>Catatan</label><input type="text" id="target-note" placeholder="contoh: Diisi dari sisa gaji setiap bulan">
+  <label class="check-line" style="margin-top:10px;"><input type="checkbox" id="target-visible-wife" checked> Tampilkan di aplikasi istri</label>
   <button class="save-btn" onclick="saveTarget()">Simpan target</button><div class="msg" id="target-msg"></div>
 </div></div>
 
@@ -186,7 +188,8 @@
   <div class="modal-header"><h2>Setor ke target</h2><button class="modal-close" onclick="closeModal('saving-modal')">×</button></div>
   <div class="saving-target-name" id="saving-target-name">Target</div>
   <label>Nominal setoran</label><input type="text" id="saving-amount" inputmode="numeric" placeholder="contoh: 250.000">
-  <label>Sumber uang</label><input type="text" id="saving-source" placeholder="contoh: Sisa gaji / Bonus / THR">
+  <label>Sumber setoran</label><div class="opt-grid"><button class="opt-btn" data-saving-loc="rantau">🧳 Uang suami</button><button class="opt-btn" data-saving-loc="rumah">🏠 Uang rumah</button></div>
+  <label>Keterangan sumber</label><input type="text" id="saving-source" placeholder="contoh: Sisa gaji / Bonus / THR">
   <label>Catatan</label><input type="text" id="saving-note" placeholder="opsional">
   <button class="save-btn" onclick="saveSavingEntry()">Simpan setoran</button><div class="msg" id="saving-msg"></div>
 </div></div>
@@ -262,15 +265,15 @@
   <div class="msg" id="notif-msg"></div>
 </div></div>
 
-<script src="config.js?v=family382"></script>
-<script src="shared.js?v=family382"></script>
+<script src="config.js?v=family383"></script>
+<script src="shared.js?v=family383"></script>
 <script>
 let selectedCat = null, selectedLoc = null;
 let editSelectedCat = null, editSelectedLoc = null, editingId = null;
 let tplSelectedCat = null, tplSelectedLoc = null;
-let incomeLoc = null, billSelectedCat = null, billLoc = null, savingTargetId = null;
+let incomeLoc = null, billSelectedCat = null, billLoc = null, savingTargetId = null, savingLoc = 'rantau';
 let currentPeriod = 'month', currentScope = 'all', currentView = 'list';
-let cachedData = [], allDataCache = [], monthAll = [], templates = [], budgets = {}, incomes = [], savingsTargets = [], bills = [];
+let cachedData = [], allDataCache = [], monthAll = [], templates = [], budgets = {}, incomes = [], savingsTargets = [], savingEntriesMonth = [], bills = [];
 let isSaving = false;
 
 function checkPwd() {
@@ -298,6 +301,7 @@ async function init() {
   bindOpt('[data-tpl-loc]', 'tplLoc', v => tplSelectedLoc = v);
   bindOpt('[data-income-loc]', 'incomeLoc', v => incomeLoc = v);
   bindOpt('[data-bill-loc]', 'billLoc', v => billLoc = v);
+  bindOpt('[data-saving-loc]', 'savingLoc', v => savingLoc = v);
   document.getElementById('save').onclick = saveExpense;
   bindFilters(); installReminderUI('suami');
   ['edit-modal','budget-modal','tpl-modal','income-modal','target-modal','saving-modal','bill-modal','family-modal','notification-modal'].forEach(id => document.getElementById(id).addEventListener('click', e => { if(e.target.id===id) closeModal(id); }));
@@ -321,13 +325,13 @@ async function loadData() {
   renderMiniChart(document.getElementById('chart'), chartRes.daily || [], 'total');
 }
 async function loadTemplates(){ const res=await safeGet({type:'templates'}); templates=res.data||[]; renderTemplates(); }
-async function loadBudgets(){ const res=await safeGet({type:'budgets'}); budgets=Object.assign({}, res.data || {}); renderBudgetList(); }
+async function loadBudgets(){ const res=await safeGet({type:'budgets'}); budgets=Object.assign({}, typeof BUDGET_DEFAULTS !== 'undefined' ? BUDGET_DEFAULTS : {}, res.data || {}); renderBudgetList(); }
 async function loadMessages(){ const res=await safeGet({type:'messages', limit:12}); renderMessages(res.data||[]); }
-async function loadSavingsTargets(){ const res=await safeGet({type:'savings_targets', period:'month'}); savingsTargets=res.data||[]; renderTarget(); }
+async function loadSavingsTargets(){ const res=await safeGet({type:'savings_targets', period:'month'}); savingsTargets=res.data||[]; savingEntriesMonth=flattenSavingsEntries(savingsTargets); renderTarget(); renderWallet(); renderSummary(); }
 async function loadBills(){ const res=await safeGet({type:'bills'}); bills=res.data||[]; document.getElementById('bills-list').innerHTML=renderBillsList(bills,false); }
-function renderSummary(){ const familyFlow=calcFamilyCashflow(allDataCache,incomes); const homeFlow=calcHomeCashflow(allDataCache,incomes); const rantauFlow=calcRantauCashflow(allDataCache,incomes); const total=familyFlow.keluar, p=familyFlow.percent||0; document.getElementById('total').textContent=fmtRp(total); document.getElementById('sum-rantau').textContent=fmtRp(rantauFlow.keluar); document.getElementById('sum-rumah').textContent=fmtRp(homeFlow.keluar); document.getElementById('progress').style.width=clamp(p,0,100)+'%'; document.getElementById('progress').className='progress-fill '+progressClass(p); document.getElementById('period-label').textContent=currentPeriod==='month'?'Terpakai bulan ini':'Terpakai 7 hari terakhir'; document.getElementById('meta').textContent=familyFlow.masuk>0?(p.toFixed(1).replace('.',',')+'% dari uang masuk '+fmtRp(familyFlow.masuk)):allDataCache.length+' transaksi · uang masuk belum dicatat'; }
-function renderWallet(){ const familyFlow=calcFamilyCashflow(monthAll,incomes); const homeFlow=calcHomeCashflow(monthAll,incomes); const rantauFlow=calcRantauCashflow(monthAll,incomes); document.getElementById('wallet-in').textContent=fmtRp(familyFlow.masuk); document.getElementById('wallet-out').textContent=fmtRp(familyFlow.keluar); document.getElementById('wallet-left').textContent=fmtRp(familyFlow.sisa); const incomeRows=incomes.length ? incomes.slice(0,4).map(i=>'<div class="income-mini"><span>'+escapeHtml(i.source)+' · '+locationLabel(i.location)+'</span><b>'+fmtRp(i.amount)+'</b><button onclick="deleteIncomeById(\''+i.id+'\')">×</button></div>') : []; const transferRow=homeFlow.transferIn>0 ? ['<div class="income-mini"><span>Transfer kategori Kirim ke rumah · 🏠 Rumah</span><b>'+fmtRp(homeFlow.transferIn)+'</b></div>'] : []; const rows=incomeRows.concat(transferRow); document.getElementById('income-list').innerHTML = rows.length ? rows.join('') + '<div class="tiny-muted">Rumah terpakai '+(homeFlow.percent||0).toFixed(1).replace('.',',')+'% · Rantau terpakai '+(rantauFlow.percent||0).toFixed(1).replace('.',',')+'%</div>' : '<div class="tiny-muted">Belum ada uang masuk dicatat bulan ini.</div>'; }
-function renderTarget(){ const el=document.getElementById('target-wrap'); if(el) el.innerHTML=renderSavingsTargets(savingsTargets,{admin:true}); }
+function renderSummary(){ const flow=scopeCashflow(currentScope, currentScope==='all'?monthAll:cachedData, incomes, savingEntriesMonth); const total=currentPeriod==='month'?flow.used:sumAmount(cachedData); const rantau=expenseAmountByScope(monthAll,'rantau')+savingsAmountByScope(savingEntriesMonth,'rantau'); const rumahFlow=rumahCashflow(monthAll,incomes,savingEntriesMonth); const rumah=rumahFlow.used; const p=currentPeriod==='month'?flow.pct:0; document.getElementById('total').textContent=fmtRp(total); document.getElementById('sum-rantau').textContent=fmtRp(rantau); document.getElementById('sum-rumah').textContent=fmtRp(rumah); document.getElementById('progress').style.width=clamp(p,0,100)+'%'; document.getElementById('progress').className='progress-fill '+progressClass(p); document.getElementById('meta').textContent=currentPeriod==='month'?(flow.masuk>0?'Sudah terpakai '+p.toFixed(1).replace('.',',')+'% dari uang masuk.':'Uang masuk bulan ini belum dicatat.'):allDataCache.length+' transaksi'; }
+function renderWallet(){ const flow=scopeCashflow('all',monthAll,incomes,savingEntriesMonth); document.getElementById('wallet-in').textContent=fmtRp(flow.masuk); document.getElementById('wallet-out').textContent=fmtRp(flow.keluar); const savedEl=document.getElementById('wallet-saved'); if(savedEl) savedEl.textContent=fmtRp(flow.saved); document.getElementById('wallet-left').textContent=fmtRp(flow.left); document.getElementById('income-list').innerHTML = incomes.length ? incomes.slice(0,4).map(i=>'<div class="income-mini"><span>'+escapeHtml(i.source)+' · '+locationLabel(i.location)+'</span><b>'+fmtRp(i.amount)+'</b><button onclick="deleteIncomeById(\''+i.id+'\')">×</button></div>').join('') : '<div class="tiny-muted">Belum ada uang masuk dicatat bulan ini.</div>'; }
+function renderTarget(){ const el=document.getElementById('target-wrap'); if(el) el.innerHTML=renderSavingsTargets(savingsTargets,{admin:true, showVisibility:true}); }
 function renderMessages(rows){ const list=document.getElementById('messages-list'); if(!rows.length){list.innerHTML='<div class="empty">Belum ada pesan</div>'; return;} list.innerHTML=rows.map(m=>'<div class="love-note"><div><b>'+escapeHtml(shortName(m.from)||'Keluarga')+'</b><span>'+fmtDate(m.timestamp)+' · '+fmtTime(m.timestamp)+' → '+escapeHtml(m.to||'')+'</span></div><p>'+escapeHtml(m.message)+'</p></div>').join(''); }
 function renderInsights(){ const lines=insightFrom(monthAll,incomes); document.getElementById('insight-list').innerHTML='<ul class="insight-list">'+lines.map(l=>'<li>'+escapeHtml(l)+'</li>').join('')+'</ul>'; }
 function renderContent(){ document.getElementById('content').innerHTML=currentView==='cat'?renderCategorySummary(cachedData):renderTimeline(cachedData,{editable:true}); }
@@ -346,10 +350,10 @@ async function deleteTemplateById(id){const ok=await confirmModal('Hapus templat
 function openIncomeModal(){incomeLoc=null;document.getElementById('income-amount').value='';document.getElementById('income-source').value='';document.getElementById('income-note').value='';document.querySelectorAll('[data-income-loc]').forEach(b=>b.classList.remove('selected'));openModal('income-modal');}
 async function saveIncome(){const amount=parseNum(document.getElementById('income-amount').value), source=document.getElementById('income-source').value.trim(), note=document.getElementById('income-note').value.trim(), msg=document.getElementById('income-msg'); if(!amount||!source||!incomeLoc){msg.className='msg err';msg.textContent='Lengkapi uang masuk';return;} try{await safePost({action:'income_add',amount,source,location:incomeLoc,who:NAMA_SUAMI,note});closeModal('income-modal');toast('Uang masuk disimpan');loadData();}catch(e){msg.className='msg err';msg.textContent='Gagal: '+apiErrorMessage(e);}}
 async function deleteIncomeById(id){const ok=await confirmModal('Hapus uang masuk ini?'); if(!ok)return; try{await safePost({action:'income_delete',id});toast('Dihapus');loadData();}catch(e){toast('Gagal hapus','err');}}
-function openTargetModal(){document.getElementById('target-label').value=''; document.getElementById('target-amount').value=''; document.getElementById('target-icon').value='🎯'; document.getElementById('target-note').value=''; document.getElementById('target-msg').textContent=''; openModal('target-modal');}
-async function saveTarget(){const label=document.getElementById('target-label').value.trim(), amount=parseNum(document.getElementById('target-amount').value), icon=document.getElementById('target-icon').value.trim()||'🎯', note=document.getElementById('target-note').value.trim(), msg=document.getElementById('target-msg'); if(!label||!amount){msg.className='msg err';msg.textContent='Lengkapi target';return;} try{await safePost({action:'savings_target_add',label,target_amount:amount,icon,note});closeModal('target-modal');toast('Target ditambahkan');loadSavingsTargets();}catch(e){msg.className='msg err';msg.textContent='Gagal: '+apiErrorMessage(e);}}
-function openSavingModal(id){const t=savingsTargets.find(x=>x.id===id); if(!t)return; savingTargetId=id; document.getElementById('saving-target-name').textContent=(t.icon||'🎯')+' '+t.label; document.getElementById('saving-amount').value=''; document.getElementById('saving-source').value='Sisa gaji'; document.getElementById('saving-note').value=''; document.getElementById('saving-msg').textContent=''; openModal('saving-modal');}
-async function saveSavingEntry(){const amount=parseNum(document.getElementById('saving-amount').value), source=document.getElementById('saving-source').value.trim(), note=document.getElementById('saving-note').value.trim(), msg=document.getElementById('saving-msg'); if(!savingTargetId||!amount){msg.className='msg err';msg.textContent='Pilih target dan isi nominal';return;} try{await safePost({action:'savings_entry_add',target_id:savingTargetId,amount,source:source||'Sisa gaji',who:NAMA_SUAMI,note});closeModal('saving-modal');toast('Setoran target disimpan');loadSavingsTargets();}catch(e){msg.className='msg err';msg.textContent='Gagal: '+apiErrorMessage(e);}}
+function openTargetModal(){document.getElementById('target-label').value=''; document.getElementById('target-amount').value=''; document.getElementById('target-icon').value='🎯'; document.getElementById('target-note').value=''; document.getElementById('target-visible-wife').checked=true; document.getElementById('target-msg').textContent=''; openModal('target-modal');}
+async function saveTarget(){const label=document.getElementById('target-label').value.trim(), amount=parseNum(document.getElementById('target-amount').value), icon=document.getElementById('target-icon').value.trim()||'🎯', note=document.getElementById('target-note').value.trim(), msg=document.getElementById('target-msg'); if(!label||!amount){msg.className='msg err';msg.textContent='Lengkapi target';return;} try{await safePost({action:'savings_target_add',label,target_amount:amount,icon,note,created_by:NAMA_SUAMI,visible_to_wife:document.getElementById('target-visible-wife').checked});closeModal('target-modal');toast('Target ditambahkan');loadSavingsTargets();}catch(e){msg.className='msg err';msg.textContent='Gagal: '+apiErrorMessage(e);}}
+function openSavingModal(id){const t=savingsTargets.find(x=>x.id===id); if(!t)return; savingTargetId=id; savingLoc='rantau'; document.getElementById('saving-target-name').textContent=(t.icon||'🎯')+' '+t.label; document.getElementById('saving-amount').value=''; document.getElementById('saving-source').value='Sisa gaji'; document.getElementById('saving-note').value=''; document.getElementById('saving-msg').textContent=''; document.querySelectorAll('[data-saving-loc]').forEach(b=>b.classList.toggle('selected', b.dataset.savingLoc==='rantau')); openModal('saving-modal');}
+async function saveSavingEntry(){const amount=parseNum(document.getElementById('saving-amount').value), source=document.getElementById('saving-source').value.trim(), note=document.getElementById('saving-note').value.trim(), msg=document.getElementById('saving-msg'); if(!savingTargetId||!amount){msg.className='msg err';msg.textContent='Pilih target dan isi nominal';return;} try{await safePost({action:'savings_entry_add',target_id:savingTargetId,amount,source:source||'Sisa gaji',who:NAMA_SUAMI,note,location:savingLoc||'rantau'});closeModal('saving-modal');toast('Setoran target disimpan');loadSavingsTargets();}catch(e){msg.className='msg err';msg.textContent='Gagal: '+apiErrorMessage(e);}}
 async function deleteTargetById(id){const ok=await confirmModal('Hapus target ini? Setoran lama tetap aman di sheet SavingsEntries.'); if(!ok)return; try{await safePost({action:'savings_target_delete',id});toast('Target dihapus');loadSavingsTargets();}catch(e){toast('Gagal hapus target','err');}}
 async function deleteSavingEntryById(id){const ok=await confirmModal('Hapus setoran ini?'); if(!ok)return; try{await safePost({action:'savings_entry_delete',id});toast('Setoran dihapus');loadSavingsTargets();}catch(e){toast('Gagal hapus setoran','err');}}
 function openBillModal(){billSelectedCat=null;billLoc=null;['bill-label','bill-amount','bill-day','bill-note'].forEach(id=>document.getElementById(id).value='');document.querySelectorAll('#bill-cats .opt-btn,[data-bill-loc]').forEach(b=>b.classList.remove('selected'));openModal('bill-modal');}
