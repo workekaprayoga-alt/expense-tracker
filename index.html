@@ -6,10 +6,10 @@
 <meta name="theme-color" content="#a04361">
 <meta name="theme-color" content="#1c1418" media="(prefers-color-scheme: dark)">
 <title>Catatan Belanja Keluarga</title>
-<link rel="manifest" href="manifest.json?v=family381">
+<link rel="manifest" href="manifest.json?v=family382">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon-192.svg">
-<link rel="stylesheet" href="styles.css?v=family381">
+<link rel="stylesheet" href="styles.css?v=family382">
 </head>
 <body>
 
@@ -31,7 +31,7 @@
 
 
 <div class="card card-elevated">
-  <div class="summary-label" id="period-label">Total bulan ini</div>
+  <div class="summary-label" id="period-label">Terpakai bulan ini</div>
   <div class="summary-amount" id="total">Rp 0</div>
   <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
   <div class="summary-meta" id="meta">Memuat…</div>
@@ -45,7 +45,7 @@
     <div><span>Keluar</span><b id="wallet-out">Rp 0</b></div>
     <div class="wallet-wide"><span>Sisa uang rumah</span><b id="wallet-left">Rp 0</b></div>
   </div>
-  <div class="tiny-muted" id="wallet-note">Kalau uang masuk belum dicatat, saldo mengikuti budget rumah.</div>
+  <div class="tiny-muted" id="wallet-note">Saldo rumah dihitung dari kirim ke rumah + uang masuk rumah - pengeluaran rumah.</div>
 </div>
 
 <div class="card" id="savings-card">
@@ -129,8 +129,8 @@
   </div>
 </div>
 
-<script src="config.js?v=family381"></script>
-<script src="shared.js?v=family381"></script>
+<script src="config.js?v=family382"></script>
+<script src="shared.js?v=family382"></script>
 <script>
 let selectedCat = null;
 let editSelectedCat = null;
@@ -251,28 +251,28 @@ async function loadBills() {
 }
 
 function renderSummary() {
-  const total = sumAmount(cachedData);
-  const baseLimit = currentScope === 'all' ? (typeof BUDGET_TOTAL !== 'undefined' ? BUDGET_TOTAL : 0) : (typeof BUDGET_RUMAH !== 'undefined' ? BUDGET_RUMAH : 0);
-  const limit = currentPeriod === 'month' ? baseLimit : Math.max(1, baseLimit / 4);
-  const p = pct(total, limit);
+  const expensesForFlow = currentPeriod === 'month' ? monthAll : cachedData;
+  const incomesForFlow = incomeAll;
+  const flow = currentScope === 'all' ? calcFamilyCashflow(expensesForFlow, incomesForFlow) : calcHomeCashflow(expensesForFlow, incomesForFlow);
+  const total = flow.keluar;
+  const p = flow.percent || 0;
   document.getElementById('total').textContent = fmtRp(total);
   document.getElementById('progress').style.width = clamp(p, 0, 100) + '%';
   document.getElementById('progress').className = 'progress-fill ' + progressClass(p);
   const scopeLabel = currentScope === 'all' ? 'keluarga' : 'rumah';
-  document.getElementById('period-label').textContent = (currentPeriod === 'month' ? 'Total bulan ini' : 'Total 7 hari terakhir') + ' · ' + scopeLabel;
-  document.getElementById('meta').textContent = limit ? Math.round(p) + '% dari budget ' + scopeLabel + ' ' + fmtRp(limit) : cachedData.length + ' transaksi';
+  document.getElementById('period-label').textContent = (currentPeriod === 'month' ? 'Terpakai bulan ini' : 'Terpakai 7 hari terakhir') + ' · ' + scopeLabel;
+  document.getElementById('meta').textContent = flow.masuk > 0 ? ((p).toFixed(1).replace('.', ',') + '% dari uang masuk ' + fmtRp(flow.masuk)) : cachedData.length + ' transaksi · uang masuk belum dicatat';
 }
 
 function renderWallet() {
-  const masuk = sumAmount(incomeHome);
-  const keluar = sumAmount(monthHome);
-  const budget = typeof BUDGET_RUMAH !== 'undefined' ? BUDGET_RUMAH : 0;
-  const basis = masuk > 0 ? masuk : budget;
-  const sisa = basis - keluar;
-  document.getElementById('wallet-in').textContent = masuk > 0 ? fmtRp(masuk) : fmtRp(budget);
-  document.getElementById('wallet-out').textContent = fmtRp(keluar);
-  document.getElementById('wallet-left').textContent = fmtRp(sisa);
-  document.getElementById('wallet-note').textContent = masuk > 0 ? 'Saldo dihitung dari uang masuk yang dicatat.' : 'Uang masuk belum dicatat, jadi saldo memakai budget rumah.';
+  const flow = calcHomeCashflow(monthAll, incomeAll);
+  document.getElementById('wallet-in').textContent = fmtRp(flow.masuk);
+  document.getElementById('wallet-out').textContent = fmtRp(flow.keluar);
+  document.getElementById('wallet-left').textContent = fmtRp(flow.sisa);
+  const parts = [];
+  if (flow.transferIn > 0) parts.push('Kirim dari suami ' + fmtRp(flow.transferIn));
+  if (flow.directIn > 0) parts.push('Uang masuk rumah ' + fmtRp(flow.directIn));
+  document.getElementById('wallet-note').textContent = parts.length ? parts.join(' + ') + '. ' + cashflowNote(flow, 'rumah') : 'Uang masuk rumah belum ada. Input kategori “Kirim ke rumah” dari admin agar saldo rumah bertambah.';
 }
 
 function renderTarget() {
