@@ -356,9 +356,62 @@ function locationLabel(loc) {
   return 'Keluarga';
 }
 
+
+// ===== Cashflow v3.8.2 =====
+function normText(v) {
+  return String(v || '').toLowerCase().trim();
+}
+
+function isKirimKeRumah(row) {
+  const cat = normText(row && row.category);
+  const note = normText(row && row.note);
+  return cat === 'kirim' || cat === 'kirim ke rumah' || note.includes('kirim ke rumah');
+}
+
+function incomeByLocation(incomeRows, loc) {
+  return sumAmount((incomeRows || []).filter(i => normText(i.location) === loc));
+}
+
+function expenseByLocation(expenseRows, loc, options) {
+  options = options || {};
+  return sumAmount((expenseRows || []).filter(e => {
+    if (normText(e.location) !== loc) return false;
+    if (options.excludeKirim && isKirimKeRumah(e)) return false;
+    return true;
+  }));
+}
+
+function transferToHome(expenseRows) {
+  return sumAmount((expenseRows || []).filter(isKirimKeRumah));
+}
+
+function calcHomeCashflow(expenseRows, incomeRows) {
+  const transferIn = transferToHome(expenseRows || []);
+  const directIn = incomeByLocation(incomeRows || [], 'rumah');
+  const masuk = transferIn + directIn;
+  const keluar = expenseByLocation(expenseRows || [], 'rumah', { excludeKirim: true });
+  return { masuk, transferIn, directIn, keluar, sisa: masuk - keluar, percent: masuk > 0 ? (keluar / masuk) * 100 : 0 };
+}
+
+function calcRantauCashflow(expenseRows, incomeRows) {
+  const masuk = incomeByLocation(incomeRows || [], 'rantau');
+  const keluar = expenseByLocation(expenseRows || [], 'rantau');
+  return { masuk, keluar, sisa: masuk - keluar, percent: masuk > 0 ? (keluar / masuk) * 100 : 0 };
+}
+
+function calcFamilyCashflow(expenseRows, incomeRows) {
+  const masuk = sumAmount(incomeRows || []);
+  const keluar = sumAmount(expenseRows || []);
+  return { masuk, keluar, sisa: masuk - keluar, percent: masuk > 0 ? (keluar / masuk) * 100 : 0 };
+}
+
+function cashflowNote(flow, label) {
+  if (!flow || !flow.masuk) return 'Uang masuk ' + (label || 'bulan ini') + ' belum dicatat.';
+  return 'Sudah terpakai ' + (flow.percent || 0).toFixed(1).replace('.', ',') + '% dari uang masuk.';
+}
+
 function expenseBudgetLimit(scope) {
-  if (scope === 'rumah') return typeof BUDGET_RUMAH !== 'undefined' ? BUDGET_RUMAH : 0;
-  return typeof BUDGET_TOTAL !== 'undefined' ? BUDGET_TOTAL : 0;
+  return 0;
 }
 
 function progressClass(percent) {
