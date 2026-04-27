@@ -31,23 +31,25 @@ const CATEGORIES = [
 // Budget bulanan default per kategori (bisa diubah dari halaman admin)
 // Yang ada di sheet Budgets akan override yang ini.
 const BUDGET_DEFAULTS = {
-  belanja: 1500000,
-  anak: 800000,
-  makan: 800000,
-  jajan: 300000,
-  transport: 400000,
-  pulsa: 200000,
-  listrik: 200000,
-  kesehatan: 200000,
-  cicilan: 750000,
+  belanja: 0,
+  anak: 0,
+  makan: 0,
+  jajan: 0,
+  transport: 0,
+  pulsa: 0,
+  listrik: 0,
+  kesehatan: 0,
+  cicilan: 0,
   kirim: 0,
-  lain: 300000
+  lain: 0
 };
 
-// Total budget bulanan
+// Total budget bulanan default dimatikan.
+// Cashflow sekarang dihitung dari uang masuk nyata.
 const BUDGET_TOTAL = 0;
 
-// Budget khusus rumah (untuk halaman istri)
+// Budget rumah default dimatikan.
+// Saldo rumah sekarang dihitung dari: kirim ke rumah + uang masuk rumah - pengeluaran rumah.
 const BUDGET_RUMAH = 0;
 
 // =====================================================
