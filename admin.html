@@ -6,10 +6,10 @@
 <meta name="theme-color" content="#a04361">
 <meta name="theme-color" content="#1c1418" media="(prefers-color-scheme: dark)">
 <title>Dashboard Keuangan Keluarga</title>
-<link rel="manifest" href="manifest.json?v=family381">
+<link rel="manifest" href="manifest.json?v=family382">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon-192.svg">
-<link rel="stylesheet" href="styles.css?v=family381">
+<link rel="stylesheet" href="styles.css?v=family382">
 </head>
 <body>
 
@@ -32,7 +32,7 @@
 
 
   <div class="card card-elevated">
-    <div class="summary-label" id="period-label">Total bulan ini</div>
+    <div class="summary-label" id="period-label">Terpakai bulan ini</div>
     <div class="summary-amount" id="total">Rp 0</div>
     <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
     <div class="summary-meta" id="meta">-</div>
@@ -262,8 +262,8 @@
   <div class="msg" id="notif-msg"></div>
 </div></div>
 
-<script src="config.js?v=family381"></script>
-<script src="shared.js?v=family381"></script>
+<script src="config.js?v=family382"></script>
+<script src="shared.js?v=family382"></script>
 <script>
 let selectedCat = null, selectedLoc = null;
 let editSelectedCat = null, editSelectedLoc = null, editingId = null;
@@ -321,12 +321,12 @@ async function loadData() {
   renderMiniChart(document.getElementById('chart'), chartRes.daily || [], 'total');
 }
 async function loadTemplates(){ const res=await safeGet({type:'templates'}); templates=res.data||[]; renderTemplates(); }
-async function loadBudgets(){ const res=await safeGet({type:'budgets'}); budgets=Object.assign({}, typeof BUDGET_DEFAULTS !== 'undefined' ? BUDGET_DEFAULTS : {}, res.data || {}); renderBudgetList(); }
+async function loadBudgets(){ const res=await safeGet({type:'budgets'}); budgets=Object.assign({}, res.data || {}); renderBudgetList(); }
 async function loadMessages(){ const res=await safeGet({type:'messages', limit:12}); renderMessages(res.data||[]); }
 async function loadSavingsTargets(){ const res=await safeGet({type:'savings_targets', period:'month'}); savingsTargets=res.data||[]; renderTarget(); }
 async function loadBills(){ const res=await safeGet({type:'bills'}); bills=res.data||[]; document.getElementById('bills-list').innerHTML=renderBillsList(bills,false); }
-function renderSummary(){ const total=sumAmount(allDataCache), rantau=sumAmount(allDataCache.filter(e=>e.location==='rantau')), rumah=sumAmount(allDataCache.filter(e=>e.location==='rumah')); const limit=currentPeriod==='month'?(typeof BUDGET_TOTAL!=='undefined'?BUDGET_TOTAL:0):Math.max(1,(typeof BUDGET_TOTAL!=='undefined'?BUDGET_TOTAL:0)/4); const p=pct(total,limit); document.getElementById('total').textContent=fmtRp(total); document.getElementById('sum-rantau').textContent=fmtRp(rantau); document.getElementById('sum-rumah').textContent=fmtRp(rumah); document.getElementById('progress').style.width=clamp(p,0,100)+'%'; document.getElementById('progress').className='progress-fill '+progressClass(p); document.getElementById('meta').textContent=limit?Math.round(p)+'% dari budget '+fmtRp(limit):allDataCache.length+' transaksi'; }
-function renderWallet(){ const masuk=sumAmount(incomes), keluar=sumAmount(monthAll), sisa=masuk-keluar; document.getElementById('wallet-in').textContent=fmtRp(masuk); document.getElementById('wallet-out').textContent=fmtRp(keluar); document.getElementById('wallet-left').textContent=fmtRp(sisa); document.getElementById('income-list').innerHTML = incomes.length ? incomes.slice(0,4).map(i=>'<div class="income-mini"><span>'+escapeHtml(i.source)+' · '+locationLabel(i.location)+'</span><b>'+fmtRp(i.amount)+'</b><button onclick="deleteIncomeById(\''+i.id+'\')">×</button></div>').join('') : '<div class="tiny-muted">Belum ada uang masuk dicatat bulan ini.</div>'; }
+function renderSummary(){ const familyFlow=calcFamilyCashflow(allDataCache,incomes); const homeFlow=calcHomeCashflow(allDataCache,incomes); const rantauFlow=calcRantauCashflow(allDataCache,incomes); const total=familyFlow.keluar, p=familyFlow.percent||0; document.getElementById('total').textContent=fmtRp(total); document.getElementById('sum-rantau').textContent=fmtRp(rantauFlow.keluar); document.getElementById('sum-rumah').textContent=fmtRp(homeFlow.keluar); document.getElementById('progress').style.width=clamp(p,0,100)+'%'; document.getElementById('progress').className='progress-fill '+progressClass(p); document.getElementById('period-label').textContent=currentPeriod==='month'?'Terpakai bulan ini':'Terpakai 7 hari terakhir'; document.getElementById('meta').textContent=familyFlow.masuk>0?(p.toFixed(1).replace('.',',')+'% dari uang masuk '+fmtRp(familyFlow.masuk)):allDataCache.length+' transaksi · uang masuk belum dicatat'; }
+function renderWallet(){ const familyFlow=calcFamilyCashflow(monthAll,incomes); const homeFlow=calcHomeCashflow(monthAll,incomes); const rantauFlow=calcRantauCashflow(monthAll,incomes); document.getElementById('wallet-in').textContent=fmtRp(familyFlow.masuk); document.getElementById('wallet-out').textContent=fmtRp(familyFlow.keluar); document.getElementById('wallet-left').textContent=fmtRp(familyFlow.sisa); const incomeRows=incomes.length ? incomes.slice(0,4).map(i=>'<div class="income-mini"><span>'+escapeHtml(i.source)+' · '+locationLabel(i.location)+'</span><b>'+fmtRp(i.amount)+'</b><button onclick="deleteIncomeById(\''+i.id+'\')">×</button></div>') : []; const transferRow=homeFlow.transferIn>0 ? ['<div class="income-mini"><span>Transfer kategori Kirim ke rumah · 🏠 Rumah</span><b>'+fmtRp(homeFlow.transferIn)+'</b></div>'] : []; const rows=incomeRows.concat(transferRow); document.getElementById('income-list').innerHTML = rows.length ? rows.join('') + '<div class="tiny-muted">Rumah terpakai '+(homeFlow.percent||0).toFixed(1).replace('.',',')+'% · Rantau terpakai '+(rantauFlow.percent||0).toFixed(1).replace('.',',')+'%</div>' : '<div class="tiny-muted">Belum ada uang masuk dicatat bulan ini.</div>'; }
 function renderTarget(){ const el=document.getElementById('target-wrap'); if(el) el.innerHTML=renderSavingsTargets(savingsTargets,{admin:true}); }
 function renderMessages(rows){ const list=document.getElementById('messages-list'); if(!rows.length){list.innerHTML='<div class="empty">Belum ada pesan</div>'; return;} list.innerHTML=rows.map(m=>'<div class="love-note"><div><b>'+escapeHtml(shortName(m.from)||'Keluarga')+'</b><span>'+fmtDate(m.timestamp)+' · '+fmtTime(m.timestamp)+' → '+escapeHtml(m.to||'')+'</span></div><p>'+escapeHtml(m.message)+'</p></div>').join(''); }
 function renderInsights(){ const lines=insightFrom(monthAll,incomes); document.getElementById('insight-list').innerHTML='<ul class="insight-list">'+lines.map(l=>'<li>'+escapeHtml(l)+'</li>').join('')+'</ul>'; }
