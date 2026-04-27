@@ -45,10 +45,10 @@ const BUDGET_DEFAULTS = {
 };
 
 // Total budget bulanan
-const BUDGET_TOTAL = 8000000;
+const BUDGET_TOTAL = 0;
 
 // Budget khusus rumah (untuk halaman istri)
-const BUDGET_RUMAH = 3500000;
+const BUDGET_RUMAH = 0;
 
 // =====================================================
 // KALIMAT SEMANGAT untuk istri (rotasi otomatis tiap aplikasi dibuka)
