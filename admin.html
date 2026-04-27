@@ -5,776 +5,349 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="theme-color" content="#a04361">
 <meta name="theme-color" content="#1c1418" media="(prefers-color-scheme: dark)">
-<title>Dashboard Keuangan</title>
+<title>Dashboard Keuangan Keluarga</title>
+<link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon-192.svg">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-<!-- Lock screen -->
 <div id="lock-screen">
-  <h2>🔒 Dashboard</h2>
+  <h2>🔒 Dashboard Keluarga</h2>
   <input type="password" id="pwd" placeholder="PIN" autocomplete="off">
   <button onclick="checkPwd()">Masuk</button>
   <div class="hint">Atur PIN di <code>config.js</code></div>
 </div>
 
-<div id="app" style="display: none;">
-
-<div class="app-header">
-  <div class="app-logo">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>
-  </div>
-  <div>
-    <h1>Dashboard keuangan</h1>
-    <p class="subtitle" style="margin: 0;">Semua pengeluaran keluarga</p>
-  </div>
-</div>
-
-<!-- Summary -->
-<div class="card card-elevated">
-  <div class="summary-label" id="period-label">Total bulan ini</div>
-  <div class="summary-amount" id="total">Rp 0</div>
-  <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
-  <div class="summary-meta" id="meta">-</div>
-  <div class="split-row">
-    <div class="split-box">
-      <div class="split-label">🧳 Rantau (kamu)</div>
-      <div class="split-value" id="sum-rantau">Rp 0</div>
+<div id="app" style="display:none;">
+  <div class="app-header family-header">
+    <div class="app-logo app-logo-glow">❤</div>
+    <div>
+      <h1>Dashboard keuangan</h1>
+      <p class="subtitle" style="margin:0;" id="family-name">Semua pengeluaran keluarga</p>
     </div>
-    <div class="split-box">
-      <div class="split-label">🏠 Rumah</div>
-      <div class="split-value" id="sum-rumah">Rp 0</div>
+    <div id="header-family-strip"></div>
+  </div>
+
+  <div id="target-wrap" class="card no-pad"></div>
+  <button class="btn-secondary wide-action" onclick="openTargetModal()">🎯 Atur target keluarga</button>
+
+  <div class="card card-elevated">
+    <div class="summary-label" id="period-label">Total bulan ini</div>
+    <div class="summary-amount" id="total">Rp 0</div>
+    <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+    <div class="summary-meta" id="meta">-</div>
+    <div class="split-row">
+      <div class="split-box"><div class="split-label">🧳 Rantau (kamu)</div><div class="split-value" id="sum-rantau">Rp 0</div></div>
+      <div class="split-box"><div class="split-label">🏠 Rumah</div><div class="split-value" id="sum-rumah">Rp 0</div></div>
     </div>
   </div>
-</div>
 
-<!-- Chart 7 hari -->
-<div class="card">
-  <div class="section-title">7 hari terakhir</div>
-  <div class="chart-container" id="chart"></div>
-</div>
-
-<!-- Templates -->
-<div class="card" id="templates-card" style="display: none;">
-  <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
-    <span>Pengeluaran rutin</span>
-    <button class="btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="openTemplateModal()">+ Tambah</button>
-  </div>
-  <div id="templates-list"></div>
-</div>
-
-<!-- Form input -->
-<div class="card">
-  <div class="section-title">✍ Catat pengeluaran</div>
-
-  <label>Nominal</label>
-  <input type="text" id="amount" inputmode="numeric" placeholder="contoh: 15.000">
-  <div class="quick-row">
-    <button class="quick-btn" data-quick="1000">+ 1rb</button>
-    <button class="quick-btn" data-quick="5000">+ 5rb</button>
-    <button class="quick-btn" data-quick="10000">+ 10rb</button>
-    <button class="quick-btn" data-quick="50000">+ 50rb</button>
-  </div>
-
-  <label>Untuk apa?</label>
-  <input type="text" id="note" placeholder="contoh: kopi pagi">
-
-  <label>Lokasi</label>
-  <div class="opt-grid">
-    <button class="opt-btn" data-loc="rantau">🧳 Rantau</button>
-    <button class="opt-btn" data-loc="rumah">🏠 Rumah</button>
-  </div>
-
-  <label>Kategori</label>
-  <div class="opt-grid" id="cats"></div>
-
-  <button class="save-btn" id="save">Simpan</button>
-  <div class="msg" id="msg"></div>
-</div>
-
-<!-- Rekap -->
-<div class="card">
-  <div class="section-title">Rekap & filter</div>
-  <div class="filter-row three">
-    <button class="filter-btn active" data-scope="all">Semua</button>
-    <button class="filter-btn" data-scope="rantau">Rantau</button>
-    <button class="filter-btn" data-scope="rumah">Rumah</button>
-  </div>
-  <div class="filter-row two">
-    <button class="filter-btn active" data-period="month">Bulan ini</button>
-    <button class="filter-btn" data-period="week">7 hari</button>
-  </div>
-  <div class="filter-row two">
-    <button class="filter-btn active" data-view="list">Daftar</button>
-    <button class="filter-btn" data-view="cat">Per kategori</button>
-  </div>
-  <div id="content"><div class="loading">Memuat</div></div>
-</div>
-
-<!-- Budget per kategori -->
-<div class="card">
-  <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
-    <span>Budget per kategori (bulanan)</span>
-    <button class="btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="openBudgetModal()">Atur</button>
-  </div>
-  <div id="budget-list"></div>
-</div>
-
-<!-- Tools -->
-<div class="card">
-  <div class="section-title">🛠 Alat</div>
-  <div style="display: grid; gap: 8px;">
-    <button class="btn-secondary" onclick="exportCSV()">📥 Download CSV (semua data)</button>
-    <button class="btn-secondary" onclick="askAnalysis()">🤖 Tanya Claude untuk analisis</button>
-    <button class="btn-secondary" onclick="logout()" style="color: var(--danger);">🔒 Kunci dashboard</button>
-  </div>
-</div>
-
-</div>
-
-<!-- Modal Edit -->
-<div class="modal-overlay" id="edit-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>Edit pengeluaran</h2>
-      <button class="modal-close" onclick="closeModal('edit-modal')" aria-label="Tutup">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
-      </button>
+  <div class="card">
+    <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <span>🏦 Dompet keluarga bulan ini</span>
+      <button class="btn-secondary micro" onclick="openIncomeModal()">+ Masuk</button>
     </div>
-    <label>Nominal</label>
-    <input type="text" id="edit-amount" inputmode="numeric">
-    <label>Untuk apa?</label>
-    <input type="text" id="edit-note">
-    <label>Lokasi</label>
-    <div class="opt-grid">
-      <button class="opt-btn" data-edit-loc="rantau">🧳 Rantau</button>
-      <button class="opt-btn" data-edit-loc="rumah">🏠 Rumah</button>
+    <div class="wallet-grid">
+      <div><span>Uang masuk</span><b id="wallet-in">Rp 0</b></div>
+      <div><span>Pengeluaran</span><b id="wallet-out">Rp 0</b></div>
+      <div class="wallet-wide"><span>Sisa tercatat</span><b id="wallet-left">Rp 0</b></div>
     </div>
-    <label>Kategori</label>
-    <div class="opt-grid" id="edit-cats"></div>
-    <button class="save-btn" onclick="saveEdit()">Simpan perubahan</button>
-    <div class="msg" id="edit-msg"></div>
+    <div id="income-list" class="income-mini-list"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <span>💌 Pesan suami-istri</span>
+      <button class="btn-secondary micro" onclick="sendQuickLove()">Kirim ❤</button>
+    </div>
+    <textarea id="quick-message" rows="2" placeholder="Tulis pesan untuk istri…"></textarea>
+    <div id="messages-list"><div class="loading">Memuat pesan</div></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">🤖 Insight bulan ini</div>
+    <div id="insight-list"><div class="loading">Memuat insight</div></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <span>📅 Jatuh tempo rutin</span>
+      <button class="btn-secondary micro" onclick="openBillModal()">+ Tambah</button>
+    </div>
+    <div id="bills-list"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">7 hari terakhir</div>
+    <div class="chart-container" id="chart"></div>
+  </div>
+
+  <div class="card" id="templates-card" style="display:none;">
+    <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <span>Pengeluaran rutin</span>
+      <button class="btn-secondary micro" onclick="openTemplateModal()">+ Tambah</button>
+    </div>
+    <div id="templates-list"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">✍ Catat pengeluaran</div>
+    <label>Nominal</label><input type="text" id="amount" inputmode="numeric" placeholder="contoh: 15.000">
+    <div class="quick-row"><button class="quick-btn" data-quick="1000">+ 1rb</button><button class="quick-btn" data-quick="5000">+ 5rb</button><button class="quick-btn" data-quick="10000">+ 10rb</button><button class="quick-btn" data-quick="50000">+ 50rb</button></div>
+    <label>Untuk apa?</label><input type="text" id="note" placeholder="contoh: kopi pagi">
+    <label>Lokasi</label><div class="opt-grid"><button class="opt-btn" data-loc="rantau">🧳 Rantau</button><button class="opt-btn" data-loc="rumah">🏠 Rumah</button></div>
+    <label>Kategori</label><div class="opt-grid" id="cats"></div>
+    <button class="save-btn" id="save">Simpan</button>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <div id="reminder-box" class="card"></div>
+
+  <div class="card">
+    <div class="section-title">Rekap & filter</div>
+    <div class="filter-row three"><button class="filter-btn active" data-scope="all">Semua</button><button class="filter-btn" data-scope="rantau">Rantau</button><button class="filter-btn" data-scope="rumah">Rumah</button></div>
+    <div class="filter-row two"><button class="filter-btn active" data-period="month">Bulan ini</button><button class="filter-btn" data-period="week">7 hari</button></div>
+    <div class="filter-row two"><button class="filter-btn active" data-view="list">Timeline</button><button class="filter-btn" data-view="cat">Per kategori</button></div>
+    <div id="content"><div class="loading">Memuat</div></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <span>Budget per kategori</span>
+      <button class="btn-secondary micro" onclick="openBudgetModal()">Atur</button>
+    </div>
+    <div id="budget-list"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">🛠 Alat</div>
+    <div style="display:grid;gap:8px;">
+      <button class="btn-secondary" onclick="exportCSV()">📥 Download CSV</button>
+      <button class="btn-secondary" onclick="copyAnalysis()">📋 Copy ringkasan bulanan</button>
+      <button class="btn-secondary" onclick="openFamilyModal()">🧡 Atur mode keluarga & foto</button>
+      <button class="btn-secondary" onclick="logout()" style="color:var(--danger);">🔒 Kunci dashboard</button>
+    </div>
   </div>
 </div>
 
-<!-- Modal Budget -->
-<div class="modal-overlay" id="budget-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>Atur budget per kategori</h2>
-      <button class="modal-close" onclick="closeModal('budget-modal')" aria-label="Tutup">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
-      </button>
-    </div>
-    <p style="font-size: 12px; color: var(--text-muted); margin-top: 0;">
-      Set 0 untuk hapus budget kategori. Auto-save saat tap di luar field.
-    </p>
-    <div id="budget-edit-list"></div>
-  </div>
-</div>
+<div class="modal-overlay" id="edit-modal"><div class="modal">
+  <div class="modal-header"><h2>Edit pengeluaran</h2><button class="modal-close" onclick="closeModal('edit-modal')">×</button></div>
+  <label>Nominal</label><input type="text" id="edit-amount" inputmode="numeric">
+  <label>Untuk apa?</label><input type="text" id="edit-note">
+  <label>Lokasi</label><div class="opt-grid"><button class="opt-btn" data-edit-loc="rantau">🧳 Rantau</button><button class="opt-btn" data-edit-loc="rumah">🏠 Rumah</button></div>
+  <label>Kategori</label><div class="opt-grid" id="edit-cats"></div>
+  <button class="save-btn" onclick="saveEdit()">Simpan perubahan</button><div class="msg" id="edit-msg"></div>
+</div></div>
 
-<!-- Modal Add Template -->
-<div class="modal-overlay" id="tpl-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>Pengeluaran rutin baru</h2>
-      <button class="modal-close" onclick="closeModal('tpl-modal')" aria-label="Tutup">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
-      </button>
+<div class="modal-overlay" id="budget-modal"><div class="modal">
+  <div class="modal-header"><h2>Atur budget kategori</h2><button class="modal-close" onclick="closeModal('budget-modal')">×</button></div>
+  <p class="tiny-muted">Set 0 untuk hapus budget kategori. Auto-save saat keluar dari field.</p>
+  <div id="budget-edit-list"></div>
+</div></div>
+
+<div class="modal-overlay" id="tpl-modal"><div class="modal">
+  <div class="modal-header"><h2>Pengeluaran rutin baru</h2><button class="modal-close" onclick="closeModal('tpl-modal')">×</button></div>
+  <label>Nama template</label><input type="text" id="tpl-label" placeholder="contoh: Bayar listrik">
+  <label>Nominal</label><input type="text" id="tpl-amount" inputmode="numeric">
+  <label>Lokasi</label><div class="opt-grid"><button class="opt-btn" data-tpl-loc="rantau">🧳 Rantau</button><button class="opt-btn" data-tpl-loc="rumah">🏠 Rumah</button></div>
+  <label>Kategori</label><div class="opt-grid" id="tpl-cats"></div>
+  <button class="save-btn" onclick="saveTemplate()">Simpan template</button><div class="msg" id="tpl-msg"></div>
+</div></div>
+
+<div class="modal-overlay" id="income-modal"><div class="modal">
+  <div class="modal-header"><h2>Catat uang masuk</h2><button class="modal-close" onclick="closeModal('income-modal')">×</button></div>
+  <label>Nominal</label><input type="text" id="income-amount" inputmode="numeric" placeholder="contoh: 3.500.000">
+  <label>Sumber</label><input type="text" id="income-source" placeholder="contoh: Gaji / Uang rumah">
+  <label>Untuk</label><div class="opt-grid"><button class="opt-btn" data-income-loc="rumah">🏠 Rumah</button><button class="opt-btn" data-income-loc="rantau">🧳 Rantau</button></div>
+  <label>Catatan</label><input type="text" id="income-note" placeholder="opsional">
+  <button class="save-btn" onclick="saveIncome()">Simpan uang masuk</button><div class="msg" id="income-msg"></div>
+</div></div>
+
+<div class="modal-overlay" id="target-modal"><div class="modal">
+  <div class="modal-header"><h2>Atur target keluarga</h2><button class="modal-close" onclick="closeModal('target-modal')">×</button></div>
+  <label>Nama target</label><input type="text" id="target-label" placeholder="contoh: Tabungan rumah">
+  <label>Target per bulan</label><input type="text" id="target-amount" inputmode="numeric">
+  <label>Catatan</label><input type="text" id="target-note" placeholder="contoh: Untuk masa depan kita">
+  <button class="save-btn" onclick="saveTarget()">Simpan target</button><div class="msg" id="target-msg"></div>
+</div></div>
+
+<div class="modal-overlay" id="bill-modal"><div class="modal">
+  <div class="modal-header"><h2>Jatuh tempo baru</h2><button class="modal-close" onclick="closeModal('bill-modal')">×</button></div>
+  <label>Nama</label><input type="text" id="bill-label" placeholder="contoh: Listrik">
+  <label>Nominal perkiraan</label><input type="text" id="bill-amount" inputmode="numeric">
+  <label>Tanggal setiap bulan</label><input type="text" id="bill-day" inputmode="numeric" placeholder="contoh: 5">
+  <label>Lokasi</label><div class="opt-grid"><button class="opt-btn" data-bill-loc="rumah">🏠 Rumah</button><button class="opt-btn" data-bill-loc="rantau">🧳 Rantau</button></div>
+  <label>Kategori</label><div class="opt-grid" id="bill-cats"></div>
+  <label>Catatan</label><input type="text" id="bill-note" placeholder="opsional">
+  <button class="save-btn" onclick="saveBill()">Simpan jatuh tempo</button><div class="msg" id="bill-msg"></div>
+</div></div>
+
+
+<div class="modal-overlay" id="family-modal"><div class="modal">
+  <div class="modal-header"><h2>Mode keluarga & foto</h2><button class="modal-close" onclick="closeModal('family-modal')">×</button></div>
+  <p class="tiny-muted">Upload foto langsung dari HP. Foto otomatis dicrop kotak, dikompres, lalu disimpan ke Google Sheet supaya tampil di HP kamu dan istri.</p>
+  <div class="family-photo-grid">
+    <div class="family-photo-card">
+      <div id="photo-preview-suami" class="photo-preview-wrap"></div>
+      <label>Foto suami</label>
+      <input type="file" id="photo-input-suami" accept="image/*" onchange="uploadFamilyPhoto('suami', this)">
+      <button class="btn-secondary micro" onclick="removeFamilyPhoto('suami')">Hapus foto</button>
     </div>
-    <p style="font-size: 12px; color: var(--text-muted); margin-top: 0;">
-      Misal: "Kuota mingguan", "Kirim ke rumah", "Bayar listrik"
-    </p>
-    <label>Nama template</label>
-    <input type="text" id="tpl-label" placeholder="contoh: Kirim ke rumah">
-    <label>Nominal</label>
-    <input type="text" id="tpl-amount" inputmode="numeric">
-    <label>Lokasi</label>
-    <div class="opt-grid">
-      <button class="opt-btn" data-tpl-loc="rantau">🧳 Rantau</button>
-      <button class="opt-btn" data-tpl-loc="rumah">🏠 Rumah</button>
+    <div class="family-photo-card">
+      <div id="photo-preview-istri" class="photo-preview-wrap"></div>
+      <label>Foto istri</label>
+      <input type="file" id="photo-input-istri" accept="image/*" onchange="uploadFamilyPhoto('istri', this)">
+      <button class="btn-secondary micro" onclick="removeFamilyPhoto('istri')">Hapus foto</button>
     </div>
-    <label>Kategori</label>
-    <div class="opt-grid" id="tpl-cats"></div>
-    <button class="save-btn" onclick="saveTemplate()">Simpan template</button>
-    <div class="msg" id="tpl-msg"></div>
   </div>
-</div>
+  <div class="msg" id="family-msg"></div>
+</div></div>
 
 <script src="config.js"></script>
 <script src="shared.js"></script>
 <script>
-let selectedCat = null;
-let selectedLoc = null;
-let editSelectedCat = null;
-let editSelectedLoc = null;
-let editingId = null;
-let tplSelectedCat = null;
-let tplSelectedLoc = null;
-let currentPeriod = 'month';
-let currentScope = 'all';
-let currentView = 'list';
-let cachedData = [];
-let allDataCache = [];
-let templates = [];
-let budgets = {};
+let selectedCat = null, selectedLoc = null;
+let editSelectedCat = null, editSelectedLoc = null, editingId = null;
+let tplSelectedCat = null, tplSelectedLoc = null;
+let incomeLoc = null, billSelectedCat = null, billLoc = null;
+let currentPeriod = 'month', currentScope = 'all', currentView = 'list';
+let cachedData = [], allDataCache = [], monthAll = [], templates = [], budgets = {}, incomes = [], targetData = null, bills = [];
 let isSaving = false;
 
-// ===== Lock screen =====
 function checkPwd() {
   const v = document.getElementById('pwd').value;
-  if (v === ADMIN_PIN) {
-    sessionStorage.setItem('unlocked', '1');
-    showApp();
-  } else {
-    toast('PIN salah', 'err');
-    if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
-  }
+  if (v === ADMIN_PIN) { sessionStorage.setItem('unlocked','1'); showApp(); }
+  else { toast('PIN salah','err'); if (navigator.vibrate) navigator.vibrate([50,50,50]); }
 }
-function showApp() {
-  document.getElementById('lock-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  init();
-}
-function logout() {
-  sessionStorage.removeItem('unlocked');
-  location.reload();
-}
+function showApp() { document.getElementById('lock-screen').style.display='none'; document.getElementById('app').style.display='block'; init(); }
+function logout() { sessionStorage.removeItem('unlocked'); location.reload(); }
 if (sessionStorage.getItem('unlocked') === '1') showApp();
-document.getElementById('pwd').addEventListener('keypress', e => {
-  if (e.key === 'Enter') checkPwd();
-});
+document.getElementById('pwd').addEventListener('keypress', e => { if (e.key === 'Enter') checkPwd(); });
 
-// ===== Init main app =====
-function init() {
-  buildCatButtons(document.getElementById('cats'), id => { selectedCat = id; });
-  buildCatButtons(document.getElementById('edit-cats'), id => { editSelectedCat = id; });
-  buildCatButtons(document.getElementById('tpl-cats'), id => { tplSelectedCat = id; });
-
-  // Location buttons
-  document.querySelectorAll('[data-loc]').forEach(btn => {
-    btn.onclick = () => {
-      selectedLoc = btn.dataset.loc;
-      document.querySelectorAll('[data-loc]').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      if (navigator.vibrate) navigator.vibrate(10);
-    };
-  });
-  document.querySelectorAll('[data-edit-loc]').forEach(btn => {
-    btn.onclick = () => {
-      editSelectedLoc = btn.dataset.editLoc;
-      document.querySelectorAll('[data-edit-loc]').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-    };
-  });
-  document.querySelectorAll('[data-tpl-loc]').forEach(btn => {
-    btn.onclick = () => {
-      tplSelectedLoc = btn.dataset.tplLoc;
-      document.querySelectorAll('[data-tpl-loc]').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-    };
-  });
-
-  // Number inputs
-  initNumberInput(document.getElementById('amount'));
+async function init() {
+  await loadFamilySettings();
+  document.getElementById('family-name').textContent = typeof NAMA_KELUARGA !== 'undefined' ? NAMA_KELUARGA : 'Semua pengeluaran keluarga';
+  document.getElementById('header-family-strip').innerHTML = familyStripHtml();
+  buildCatButtons(document.getElementById('cats'), id => selectedCat = id);
+  buildCatButtons(document.getElementById('edit-cats'), id => editSelectedCat = id);
+  buildCatButtons(document.getElementById('tpl-cats'), id => tplSelectedCat = id);
+  buildCatButtons(document.getElementById('bill-cats'), id => billSelectedCat = id);
+  ['amount','edit-amount','tpl-amount','income-amount','target-amount','bill-amount'].forEach(id => initNumberInput(document.getElementById(id)));
   attachQuickButtons(document.querySelector('.quick-row'), document.getElementById('amount'));
-  initNumberInput(document.getElementById('edit-amount'));
-  initNumberInput(document.getElementById('tpl-amount'));
-
-  // Filters
-  document.querySelectorAll('[data-period]').forEach(btn => {
-    btn.onclick = () => {
-      currentPeriod = btn.dataset.period;
-      document.querySelectorAll('[data-period]').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('period-label').textContent =
-        currentPeriod === 'month' ? 'Total bulan ini' : 'Total 7 hari terakhir';
-      loadData();
-    };
-  });
-  document.querySelectorAll('[data-scope]').forEach(btn => {
-    btn.onclick = () => {
-      currentScope = btn.dataset.scope;
-      document.querySelectorAll('[data-scope]').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      loadData();
-    };
-  });
-  document.querySelectorAll('[data-view]').forEach(btn => {
-    btn.onclick = () => {
-      currentView = btn.dataset.view;
-      document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      renderContent();
-    };
-  });
-
+  bindOpt('[data-loc]', 'loc', v => selectedLoc = v);
+  bindOpt('[data-edit-loc]', 'editLoc', v => editSelectedLoc = v);
+  bindOpt('[data-tpl-loc]', 'tplLoc', v => tplSelectedLoc = v);
+  bindOpt('[data-income-loc]', 'incomeLoc', v => incomeLoc = v);
+  bindOpt('[data-bill-loc]', 'billLoc', v => billLoc = v);
   document.getElementById('save').onclick = saveExpense;
-
-  // Tutup modal kalau tap di overlay
-  ['edit-modal', 'budget-modal', 'tpl-modal'].forEach(id => {
-    document.getElementById(id).addEventListener('click', e => {
-      if (e.target.id === id) closeModal(id);
-    });
-  });
-
-  if (typeof API_URL === 'undefined' || !API_URL || API_URL.includes('PASTE_URL')) {
-    document.getElementById('content').innerHTML =
-      '<div class="empty">⚠ API URL belum diset. Edit <code>config.js</code> dulu.</div>';
-  } else {
-    loadData();
-    loadBudgets();
-    loadTemplates();
-  }
+  bindFilters(); installReminderUI('suami');
+  ['edit-modal','budget-modal','tpl-modal','income-modal','target-modal','bill-modal','family-modal'].forEach(id => document.getElementById(id).addEventListener('click', e => { if(e.target.id===id) closeModal(id); }));
+  if (typeof API_URL === 'undefined' || !API_URL || API_URL.includes('PASTE_URL')) document.getElementById('content').innerHTML = '<div class="empty">⚠ API URL belum diset. Edit <code>config.js</code> dulu.</div>';
+  else loadAll();
 }
-
-// ===== Save =====
-async function saveExpense() {
-  if (isSaving) return;
-  const amount = parseNum(document.getElementById('amount').value);
-  const note = document.getElementById('note').value.trim();
-  const msg = document.getElementById('msg');
-  const btn = document.getElementById('save');
-
-  if (!amount) { msg.className = 'msg err'; msg.textContent = 'Nominal kosong'; return; }
-  if (!selectedLoc) { msg.className = 'msg err'; msg.textContent = 'Pilih lokasi'; return; }
-  if (!selectedCat) { msg.className = 'msg err'; msg.textContent = 'Pilih kategori'; return; }
-
-  isSaving = true;
-  btn.disabled = true; btn.textContent = 'Menyimpan…';
-
-  try {
-    const data = await apiPost({
-      action: 'add',
-      amount: amount,
-      note: note || getCategoryMeta(selectedCat).label,
-      category: selectedCat,
-      location: selectedLoc,
-      who: NAMA_SUAMI,
-      message: ''
-    });
-    if (data.ok) {
-      toast('✓ Tersimpan');
-      document.getElementById('amount').value = '';
-      document.getElementById('note').value = '';
-      selectedCat = null; selectedLoc = null;
-      // Fix bug: reset SEMUA opt-btn yang relevan (cats + lokasi)
-      document.querySelectorAll('#cats .opt-btn').forEach(x => x.classList.remove('selected'));
-      document.querySelectorAll('[data-loc]').forEach(x => x.classList.remove('selected'));
-      msg.textContent = '';
-      loadData();
-    } else {
-      msg.className = 'msg err'; msg.textContent = 'Gagal: ' + (data.error || '');
-    }
-  } catch (e) {
-    msg.className = 'msg err'; msg.textContent = 'Tidak ada koneksi';
-  }
-  isSaving = false;
-  btn.disabled = false; btn.textContent = 'Simpan';
+function bindOpt(selector, key, cb) { document.querySelectorAll(selector).forEach(btn => btn.onclick = () => { cb(btn.dataset[key]); document.querySelectorAll(selector).forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); if(navigator.vibrate) navigator.vibrate(10); }); }
+function bindFilters() {
+  document.querySelectorAll('[data-period]').forEach(btn => btn.onclick = () => { currentPeriod = btn.dataset.period; document.querySelectorAll('[data-period]').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); document.getElementById('period-label').textContent = currentPeriod==='month'?'Total bulan ini':'Total 7 hari terakhir'; loadData(); });
+  document.querySelectorAll('[data-scope]').forEach(btn => btn.onclick = () => { currentScope = btn.dataset.scope; document.querySelectorAll('[data-scope]').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); loadData(); });
+  document.querySelectorAll('[data-view]').forEach(btn => btn.onclick = () => { currentView = btn.dataset.view; document.querySelectorAll('[data-view]').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderContent(); });
 }
-
-// ===== Load all data =====
+async function loadAll() { await Promise.all([loadData(), loadTemplates(), loadBudgets(), loadMessages(), loadTarget(), loadBills()]); }
 async function loadData() {
   document.getElementById('content').innerHTML = '<div class="loading">Memuat</div>';
+  const [filteredRes, allRes, monthRes, incRes, chartRes] = await Promise.all([
+    safeGet({ type:'expenses', scope:currentScope, period:currentPeriod }), safeGet({ type:'expenses', scope:'all', period:currentPeriod }), safeGet({ type:'expenses', scope:'all', period:'month' }), safeGet({ type:'incomes', scope:'all', period:'month' }), safeGet({ type:'summary', scope:'all', period:'week' })
+  ]);
+  cachedData = filteredRes.data || []; allDataCache = allRes.data || []; monthAll = monthRes.data || []; incomes = incRes.data || [];
+  renderSummary(); renderWallet(); renderContent(); renderBudgetList(); renderInsights(); renderTarget();
+  renderMiniChart(document.getElementById('chart'), chartRes.daily || [], 'total');
+}
+async function loadTemplates(){ const res=await safeGet({type:'templates'}); templates=res.data||[]; renderTemplates(); }
+async function loadBudgets(){ const res=await safeGet({type:'budgets'}); budgets=Object.assign({}, typeof BUDGET_DEFAULTS !== 'undefined' ? BUDGET_DEFAULTS : {}, res.data || {}); renderBudgetList(); }
+async function loadMessages(){ const res=await safeGet({type:'messages', limit:12}); renderMessages(res.data||[]); }
+async function loadTarget(){ const res=await safeGet({type:'target', key:'family_monthly'}); targetData=res.data||null; renderTarget(); }
+async function loadBills(){ const res=await safeGet({type:'bills'}); bills=res.data||[]; document.getElementById('bills-list').innerHTML=renderBillsList(bills,false); }
+function renderSummary(){ const total=sumAmount(allDataCache), rantau=sumAmount(allDataCache.filter(e=>e.location==='rantau')), rumah=sumAmount(allDataCache.filter(e=>e.location==='rumah')); const limit=currentPeriod==='month'?(typeof BUDGET_TOTAL!=='undefined'?BUDGET_TOTAL:0):Math.max(1,(typeof BUDGET_TOTAL!=='undefined'?BUDGET_TOTAL:0)/4); const p=pct(total,limit); document.getElementById('total').textContent=fmtRp(total); document.getElementById('sum-rantau').textContent=fmtRp(rantau); document.getElementById('sum-rumah').textContent=fmtRp(rumah); document.getElementById('progress').style.width=clamp(p,0,100)+'%'; document.getElementById('progress').className='progress-fill '+progressClass(p); document.getElementById('meta').textContent=limit?Math.round(p)+'% dari budget '+fmtRp(limit):allDataCache.length+' transaksi'; }
+function renderWallet(){ const masuk=sumAmount(incomes), keluar=sumAmount(monthAll), sisa=masuk-keluar; document.getElementById('wallet-in').textContent=fmtRp(masuk); document.getElementById('wallet-out').textContent=fmtRp(keluar); document.getElementById('wallet-left').textContent=fmtRp(sisa); document.getElementById('income-list').innerHTML = incomes.length ? incomes.slice(0,4).map(i=>'<div class="income-mini"><span>'+escapeHtml(i.source)+' · '+locationLabel(i.location)+'</span><b>'+fmtRp(i.amount)+'</b><button onclick="deleteIncomeById(\''+i.id+'\')">×</button></div>').join('') : '<div class="tiny-muted">Belum ada uang masuk dicatat bulan ini.</div>'; }
+function renderTarget(){ document.getElementById('target-wrap').innerHTML=renderFamilyTarget(targetData,monthAll,incomes); }
+function renderMessages(rows){ const list=document.getElementById('messages-list'); if(!rows.length){list.innerHTML='<div class="empty">Belum ada pesan</div>'; return;} list.innerHTML=rows.map(m=>'<div class="love-note"><div><b>'+escapeHtml(shortName(m.from)||'Keluarga')+'</b><span>'+fmtDate(m.timestamp)+' · '+fmtTime(m.timestamp)+' → '+escapeHtml(m.to||'')+'</span></div><p>'+escapeHtml(m.message)+'</p></div>').join(''); }
+function renderInsights(){ const lines=insightFrom(monthAll,incomes); document.getElementById('insight-list').innerHTML='<ul class="insight-list">'+lines.map(l=>'<li>'+escapeHtml(l)+'</li>').join('')+'</ul>'; }
+function renderContent(){ document.getElementById('content').innerHTML=currentView==='cat'?renderCategorySummary(cachedData):renderTimeline(cachedData,{editable:true}); }
+function renderTemplates(){ const card=document.getElementById('templates-card'), list=document.getElementById('templates-list'); card.style.display='block'; if(!templates.length){list.innerHTML='<div class="empty">Belum ada template. Klik Tambah.</div>'; return;} list.innerHTML='<div class="template-chips">'+templates.map((t,i)=>{const cat=getCategoryMeta(t.category); return '<button class="template-chip" onclick="useTemplate('+i+')">'+iconHtml(cat.icon,14)+'<span>'+escapeHtml(t.label)+'</span><b>'+fmtRp(t.amount)+'</b></button><button class="chip-delete" onclick="deleteTemplateById(\''+t.id+'\')">×</button>';}).join('')+'</div>'; }
+function renderBudgetList(){ const list=document.getElementById('budget-list'); if(!list) return; const byCat={}; monthAll.forEach(e=>byCat[e.category]=(byCat[e.category]||0)+(Number(e.amount)||0)); list.innerHTML=CATEGORIES.map(c=>{const limit=Number(budgets[c.id])||0, used=byCat[c.id]||0, p=pct(used,limit); return '<div class="budget-row"><div class="budget-top"><span>'+iconHtml(c.icon,16)+' '+escapeHtml(c.label)+'</span><b>'+fmtRp(used)+' / '+fmtRp(limit)+'</b></div>'+progressHtml(used,limit,limit?Math.round(p)+'%':'Belum ada budget')+'</div>';}).join(''); const edit=document.getElementById('budget-edit-list'); if(edit) edit.innerHTML=CATEGORIES.map(c=>'<label>'+escapeHtml(c.label)+'</label><input type="text" data-budget-cat="'+c.id+'" value="'+fmtNum(budgets[c.id]||0)+'">').join(''); if(edit) edit.querySelectorAll('[data-budget-cat]').forEach(inp=>{ initNumberInput(inp); inp.onblur=()=>setBudgetValue(inp.dataset.budgetCat,parseNum(inp.value)); }); }
+async function saveExpense(){ if(isSaving)return; const amount=parseNum(document.getElementById('amount').value), note=document.getElementById('note').value.trim(), msg=document.getElementById('msg'), btn=document.getElementById('save'); if(!amount){msg.className='msg err';msg.textContent='Nominal kosong';return;} if(!selectedLoc){msg.className='msg err';msg.textContent='Pilih lokasi';return;} if(!selectedCat){msg.className='msg err';msg.textContent='Pilih kategori';return;} isSaving=true;btn.disabled=true;btn.textContent='Menyimpan…'; try{ await safePost({action:'add',amount,note:note||getCategoryMeta(selectedCat).label,category:selectedCat,location:selectedLoc,who:NAMA_SUAMI,message:''}); toast('✓ Tersimpan'); document.getElementById('amount').value=''; document.getElementById('note').value=''; selectedCat=null;selectedLoc=null; document.querySelectorAll('#cats .opt-btn,[data-loc]').forEach(x=>x.classList.remove('selected')); msg.textContent=''; loadData(); }catch(e){msg.className='msg err';msg.textContent='Gagal: '+apiErrorMessage(e);} isSaving=false;btn.disabled=false;btn.textContent='Simpan'; }
+async function useTemplate(i){ const t=templates[i]; const ok=await confirmModal('Tambah "'+t.label+'" — '+fmtRp(t.amount)+'?'); if(!ok)return; try{await safePost({action:'add',amount:t.amount,note:t.note||t.label,category:t.category,location:t.location,who:NAMA_SUAMI,message:''});toast('✓ Tersimpan');loadData();}catch(e){toast('Gagal: '+apiErrorMessage(e),'err');} }
+function openEdit(id){ const e=cachedData.find(x=>x.id===id)||allDataCache.find(x=>x.id===id); if(!e)return; editingId=id; editSelectedCat=e.category; editSelectedLoc=e.location; document.getElementById('edit-amount').value=fmtNum(e.amount); document.getElementById('edit-note').value=e.note||''; document.querySelectorAll('#edit-cats .opt-btn').forEach(b=>b.classList.toggle('selected',b.dataset.cat===e.category)); document.querySelectorAll('[data-edit-loc]').forEach(b=>b.classList.toggle('selected',b.dataset.editLoc===e.location)); openModal('edit-modal'); }
+async function saveEdit(){ const amount=parseNum(document.getElementById('edit-amount').value), msg=document.getElementById('edit-msg'); if(!amount){msg.className='msg err';msg.textContent='Nominal kosong';return;} try{await safePost({action:'update',id:editingId,amount,note:document.getElementById('edit-note').value.trim(),category:editSelectedCat,location:editSelectedLoc}); closeModal('edit-modal'); toast('✓ Diperbarui'); loadData();}catch(e){msg.className='msg err';msg.textContent='Gagal: '+apiErrorMessage(e);} }
+async function deleteExpenseById(id){const ok=await confirmModal('Hapus transaksi ini?');if(!ok)return;try{await safePost({action:'delete',id});toast('Dihapus');loadData();}catch(e){toast('Gagal hapus: '+apiErrorMessage(e),'err');}}
+async function setBudgetValue(cat,val){try{budgets[cat]=val;await safePost({action:'budget_set',category:cat,monthly_limit:val});renderBudgetList();toast('Budget disimpan');}catch(e){toast('Gagal simpan budget','err');}}
+function openBudgetModal(){renderBudgetList();openModal('budget-modal');}
+function openTemplateModal(){tplSelectedCat=null;tplSelectedLoc=null;document.getElementById('tpl-label').value='';document.getElementById('tpl-amount').value='';document.querySelectorAll('#tpl-cats .opt-btn,[data-tpl-loc]').forEach(b=>b.classList.remove('selected'));openModal('tpl-modal');}
+async function saveTemplate(){const label=document.getElementById('tpl-label').value.trim(), amount=parseNum(document.getElementById('tpl-amount').value), msg=document.getElementById('tpl-msg'); if(!label||!amount||!tplSelectedCat||!tplSelectedLoc){msg.className='msg err';msg.textContent='Lengkapi template';return;} try{await safePost({action:'template_add',label,amount,category:tplSelectedCat,location:tplSelectedLoc,note:label}); closeModal('tpl-modal');toast('Template disimpan');loadTemplates();}catch(e){msg.className='msg err';msg.textContent='Gagal: '+apiErrorMessage(e);}}
+async function deleteTemplateById(id){const ok=await confirmModal('Hapus template ini?'); if(!ok)return; try{await safePost({action:'template_delete',id});toast('Template dihapus');loadTemplates();}catch(e){toast('Gagal hapus','err');}}
+function openIncomeModal(){incomeLoc=null;document.getElementById('income-amount').value='';document.getElementById('income-source').value='';document.getElementById('income-note').value='';document.querySelectorAll('[data-income-loc]').forEach(b=>b.classList.remove('selected'));openModal('income-modal');}
+async function saveIncome(){const amount=parseNum(document.getElementById('income-amount').value), source=document.getElementById('income-source').value.trim(), note=document.getElementById('income-note').value.trim(), msg=document.getElementById('income-msg'); if(!amount||!source||!incomeLoc){msg.className='msg err';msg.textContent='Lengkapi uang masuk';return;} try{await safePost({action:'income_add',amount,source,location:incomeLoc,who:NAMA_SUAMI,note});closeModal('income-modal');toast('Uang masuk disimpan');loadData();}catch(e){msg.className='msg err';msg.textContent='Gagal: '+apiErrorMessage(e);}}
+async function deleteIncomeById(id){const ok=await confirmModal('Hapus uang masuk ini?'); if(!ok)return; try{await safePost({action:'income_delete',id});toast('Dihapus');loadData();}catch(e){toast('Gagal hapus','err');}}
+function openTargetModal(){document.getElementById('target-label').value=(targetData&&targetData.label)||TARGET_DEFAULT_LABEL; document.getElementById('target-amount').value=fmtNum((targetData&&targetData.monthly_target)||TARGET_DEFAULT_AMOUNT); document.getElementById('target-note').value=(targetData&&targetData.note)||TARGET_DEFAULT_NOTE; openModal('target-modal');}
+async function saveTarget(){const label=document.getElementById('target-label').value.trim(), amount=parseNum(document.getElementById('target-amount').value), note=document.getElementById('target-note').value.trim(), msg=document.getElementById('target-msg'); if(!label||!amount){msg.className='msg err';msg.textContent='Lengkapi target';return;} try{await safePost({action:'target_set',key:'family_monthly',label,monthly_target:amount,note});closeModal('target-modal');toast('Target disimpan');loadTarget();}catch(e){msg.className='msg err';msg.textContent='Gagal: '+apiErrorMessage(e);}}
+function openBillModal(){billSelectedCat=null;billLoc=null;['bill-label','bill-amount','bill-day','bill-note'].forEach(id=>document.getElementById(id).value='');document.querySelectorAll('#bill-cats .opt-btn,[data-bill-loc]').forEach(b=>b.classList.remove('selected'));openModal('bill-modal');}
+async function saveBill(){const label=document.getElementById('bill-label').value.trim(), amount=parseNum(document.getElementById('bill-amount').value), due_day=parseNum(document.getElementById('bill-day').value), note=document.getElementById('bill-note').value.trim(), msg=document.getElementById('bill-msg'); if(!label||!amount||!due_day||!billSelectedCat||!billLoc){msg.className='msg err';msg.textContent='Lengkapi jatuh tempo';return;} try{await safePost({action:'bill_add',label,amount,due_day,category:billSelectedCat,location:billLoc,note});closeModal('bill-modal');toast('Jatuh tempo disimpan');loadBills();}catch(e){msg.className='msg err';msg.textContent='Gagal: '+apiErrorMessage(e);}}
+async function deleteBillById(id){const ok=await confirmModal('Hapus jatuh tempo ini?'); if(!ok)return; try{await safePost({action:'bill_delete',id});toast('Dihapus');loadBills();}catch(e){toast('Gagal hapus','err');}}
+async function sendQuickLove(){const el=document.getElementById('quick-message'), msg=el.value.trim(); if(!msg){toast('Tulis pesannya dulu','err');return;} try{await safePost({action:'message_add',from:NAMA_SUAMI,to:'istri',message:msg});el.value='';toast('Pesan terkirim ❤');loadMessages();}catch(e){toast('Gagal kirim: '+apiErrorMessage(e),'err');}}
+
+function openFamilyModal(){
+  renderFamilyPhotoSettings();
+  openModal('family-modal');
+}
+function renderFamilyPhotoSettings(){
+  const suami = document.getElementById('photo-preview-suami');
+  const istri = document.getElementById('photo-preview-istri');
+  if (suami) suami.innerHTML = avatarHtml(typeof NAMA_SUAMI !== 'undefined' ? NAMA_SUAMI : 'Suami', getFamilyPhoto('suami'), 'suami big');
+  if (istri) istri.innerHTML = avatarHtml(typeof NAMA_ISTRI !== 'undefined' ? NAMA_ISTRI : 'Istri', getFamilyPhoto('istri'), 'istri big');
+}
+async function uploadFamilyPhoto(role, input){
+  const msg = document.getElementById('family-msg');
+  const file = input && input.files && input.files[0];
+  if (!file) return;
+  msg.className = 'msg';
+  msg.textContent = 'Memproses foto…';
   try {
-    const [filteredRes, allRes] = await Promise.all([
-      apiGet({ type: 'expenses', scope: currentScope, period: currentPeriod }),
-      apiGet({ type: 'expenses', scope: 'all', period: currentPeriod })
-    ]);
-
-    if (filteredRes.ok) cachedData = filteredRes.data;
-    if (allRes.ok) allDataCache = allRes.data;
-
-    renderSummary();
-    renderContent();
-    renderBudgetList();
-    loadChart();
-  } catch (e) {
-    document.getElementById('content').innerHTML = '<div class="empty">Tidak ada koneksi</div>';
+    const dataUrl = await imageFileToDataUrl(file, 240, 0.78);
+    await saveFamilyPhoto(role, dataUrl);
+    refreshFamilyStrip();
+    renderFamilyPhotoSettings();
+    renderTarget();
+    msg.className = 'msg ok';
+    msg.textContent = 'Foto tersimpan dan akan tampil di kedua aplikasi.';
+    toast('Foto mode keluarga diperbarui ❤');
+  } catch(e) {
+    msg.className = 'msg err';
+    msg.textContent = apiErrorMessage(e);
   }
+  input.value = '';
 }
-
-async function loadTemplates() {
-  try {
-    const res = await apiGet({ type: 'templates' });
-    if (res.ok) {
-      templates = res.data;
-      renderTemplates();
-    }
-  } catch (e) {}
-}
-
-async function loadBudgets() {
-  try {
-    const res = await apiGet({ type: 'budgets' });
-    if (res.ok) {
-      budgets = Object.assign({}, BUDGET_DEFAULTS, res.data);
-      renderBudgetList();
-    }
-  } catch (e) { budgets = Object.assign({}, BUDGET_DEFAULTS); }
-}
-
-function renderTemplates() {
-  const card = document.getElementById('templates-card');
-  const list = document.getElementById('templates-list');
-  card.style.display = 'block';
-  if (templates.length === 0) {
-    list.innerHTML = '<div class="empty" style="padding: 8px 0;">Belum ada template. Klik "Tambah".</div>';
-    return;
-  }
-  list.innerHTML = '';
-  templates.forEach((t, i) => {
-    const cat = getCategoryMeta(t.category);
-    const locIcon = t.location === 'rantau' ? '🧳' : '🏠';
-    const div = document.createElement('div');
-    div.className = 'row-item';
-    div.innerHTML =
-      '<div class="row-left">' +
-        '<div class="row-title">' + iconHtml(cat.icon, 16) + escapeHtml(t.label) + '</div>' +
-        '<div class="row-meta">' + locIcon + ' ' + escapeHtml(cat.label) + ' · ' + fmtRp(t.amount) + '</div>' +
-        '<div class="row-actions">' +
-          '<button class="icon-btn" data-act="use" data-idx="' + i + '">' + iconHtml('plus', 12) + ' pakai sekarang</button>' +
-          '<button class="icon-btn danger" data-act="del" data-id="' + escapeHtml(t.id) + '">' + iconHtml('trash', 12) + ' hapus</button>' +
-        '</div>' +
-      '</div>';
-    list.appendChild(div);
-  });
-  list.querySelectorAll('[data-act]').forEach(btn => {
-    btn.onclick = () => {
-      if (btn.dataset.act === 'use') useTemplate(templates[+btn.dataset.idx]);
-      else if (btn.dataset.act === 'del') deleteTemplate(btn.dataset.id);
-    };
-  });
-}
-
-async function useTemplate(tpl) {
-  const ok = await confirmModal('Tambah "' + tpl.label + '" — ' + fmtRp(tpl.amount) + '?');
+async function removeFamilyPhoto(role){
+  const ok = await confirmModal('Hapus foto ini? Avatar inisial akan dipakai lagi.');
   if (!ok) return;
+  const msg = document.getElementById('family-msg');
   try {
-    const data = await apiPost({
-      action: 'add',
-      amount: tpl.amount,
-      note: tpl.note || tpl.label,
-      category: tpl.category,
-      location: tpl.location,
-      who: NAMA_SUAMI,
-      message: ''
-    });
-    if (data.ok) { toast('✓ Tersimpan'); loadData(); }
-  } catch (e) { toast('Gagal', 'err'); }
-}
-
-async function deleteTemplate(id) {
-  const ok = await confirmModal('Hapus template ini?');
-  if (!ok) return;
-  try {
-    const data = await apiPost({ action: 'template_delete', id: id });
-    if (data.ok) { toast('Dihapus'); loadTemplates(); }
-  } catch (e) {}
-}
-
-function openTemplateModal() {
-  document.getElementById('tpl-label').value = '';
-  document.getElementById('tpl-amount').value = '';
-  tplSelectedCat = null; tplSelectedLoc = null;
-  document.querySelectorAll('#tpl-cats .opt-btn, [data-tpl-loc]').forEach(b => b.classList.remove('selected'));
-  document.getElementById('tpl-modal').classList.add('show');
-}
-
-async function saveTemplate() {
-  const label = document.getElementById('tpl-label').value.trim();
-  const amount = parseNum(document.getElementById('tpl-amount').value);
-  const msg = document.getElementById('tpl-msg');
-
-  if (!label) { msg.className = 'msg err'; msg.textContent = 'Nama belum diisi'; return; }
-  if (!amount) { msg.className = 'msg err'; msg.textContent = 'Nominal kosong'; return; }
-  if (!tplSelectedLoc) { msg.className = 'msg err'; msg.textContent = 'Pilih lokasi'; return; }
-  if (!tplSelectedCat) { msg.className = 'msg err'; msg.textContent = 'Pilih kategori'; return; }
-
-  try {
-    const data = await apiPost({
-      action: 'template_add',
-      label: label,
-      amount: amount,
-      category: tplSelectedCat,
-      location: tplSelectedLoc,
-      note: ''
-    });
-    if (data.ok) {
-      closeModal('tpl-modal');
-      toast('✓ Template ditambahkan');
-      loadTemplates();
-    }
-  } catch (e) { msg.className = 'msg err'; msg.textContent = 'Gagal'; }
-}
-
-// ===== Chart =====
-async function loadChart() {
-  try {
-    const res = await apiGet({ type: 'summary', period: 'week' });
-    if (!res.ok) return;
-
-    // Build local 7 days, map ke daily dari server
-    const today = new Date();
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
-      const key = localDateKey(d);
-      const found = res.daily.find(x => x.date === key);
-      days.push({ date: key, total: found ? found.total : 0, isToday: i === 0 });
-    }
-
-    const max = Math.max(...days.map(d => d.total), 1);
-    const chartEl = document.getElementById('chart');
-    chartEl.innerHTML = days.map(d => {
-      const pct = (d.total / max) * 100;
-      const dt = new Date(d.date + 'T00:00:00');
-      const dayLabel = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'][dt.getDay()];
-      return '<div class="chart-bar' + (d.isToday ? ' today' : '') + '">' +
-        (d.total > 0 ? '<div class="chart-bar-value">' + fmtNum(d.total / 1000) + 'rb</div>' : '') +
-        '<div class="chart-bar-fill" style="height: ' + pct + '%;"></div>' +
-        '<div class="chart-bar-label">' + dayLabel + '</div>' +
-        '</div>';
-    }).join('');
-  } catch (e) {}
-}
-
-// ===== Render summary =====
-function renderSummary() {
-  const total = allDataCache.reduce((s, d) => s + d.amount, 0);
-  const rantau = allDataCache.filter(d => d.location === 'rantau').reduce((s, d) => s + d.amount, 0);
-  const rumah = allDataCache.filter(d => d.location === 'rumah').reduce((s, d) => s + d.amount, 0);
-
-  document.getElementById('total').textContent = fmtRp(total);
-  document.getElementById('sum-rantau').textContent = fmtRp(rantau);
-  document.getElementById('sum-rumah').textContent = fmtRp(rumah);
-
-  const budget = currentPeriod === 'month' ? BUDGET_TOTAL : Math.round(BUDGET_TOTAL * 7 / 30);
-  const pct = Math.min(100, Math.round((total / budget) * 100));
-  const fill = document.getElementById('progress');
-  fill.style.width = pct + '%';
-  if (pct >= 90) fill.style.background = 'var(--danger-bar)';
-  else if (pct >= 70) fill.style.background = 'var(--warn-bar)';
-  else fill.style.background = 'var(--green-bar)';
-
-  document.getElementById('meta').textContent =
-    pct + '% dari budget ' + fmtRp(budget) + ' · ' + allDataCache.length + ' transaksi';
-}
-
-function renderContent() {
-  const c = document.getElementById('content');
-  if (cachedData.length === 0) {
-    c.innerHTML = '<div class="empty">Belum ada catatan</div>';
-    return;
-  }
-
-  if (currentView === 'list') {
-    c.innerHTML = cachedData.slice(0, 80).map(d => {
-      const cat = getCategoryMeta(d.category);
-      const dateStr = fmtDate(d.timestamp) + ' ' + fmtTime(d.timestamp);
-      const badge = d.location === 'rantau'
-        ? '<span class="badge badge-rantau">🧳</span>'
-        : '<span class="badge badge-rumah">🏠</span>';
-      const whoText = d.who ? ' · ' + escapeHtml(d.who) : '';
-      return '<div class="row-item">' +
-        '<div class="row-left">' +
-          '<div class="row-title">' + badge + iconHtml(cat.icon, 16) + escapeHtml(cat.label) + '</div>' +
-          '<div class="row-meta">' + escapeHtml(d.note) + ' · ' + dateStr + whoText +
-            (d.message ? ' <span class="badge badge-msg">' + iconHtml('chat', 10) + 'pesan</span>' : '') +
-          '</div>' +
-          (d.message ? '<div class="message-box">"' + escapeHtml(d.message) + '"</div>' : '') +
-          '<div class="row-actions">' +
-            '<button class="icon-btn" data-act="edit" data-id="' + escapeHtml(d.id) + '">' + iconHtml('edit', 12) + ' edit</button>' +
-            '<button class="icon-btn danger" data-act="del" data-id="' + escapeHtml(d.id) + '">' + iconHtml('trash', 12) + ' hapus</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="row-amount">' + fmtRp(d.amount) + '</div></div>';
-    }).join('');
-
-    c.querySelectorAll('[data-act]').forEach(btn => {
-      btn.onclick = () => {
-        const id = btn.dataset.id;
-        if (btn.dataset.act === 'edit') openEdit(id);
-        else if (btn.dataset.act === 'del') deleteItem(id);
-      };
-    });
-  } else {
-    const byCat = {};
-    cachedData.forEach(d => { byCat[d.category] = (byCat[d.category] || 0) + d.amount; });
-    const total = cachedData.reduce((s, d) => s + d.amount, 0);
-    const sorted = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
-    c.innerHTML = sorted.map(([cat, amt]) => {
-      const meta = getCategoryMeta(cat);
-      const pct = Math.round((amt / total) * 100);
-      return '<div class="row-item"><div class="row-left">' +
-        '<div class="row-title">' + iconHtml(meta.icon, 16) + escapeHtml(meta.label) +
-        ' <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">' + pct + '%</span></div>' +
-        '<div class="budget-progress" style="margin-top:6px;"><div class="budget-progress-fill" style="width:' + pct + '%"></div></div>' +
-        '</div><div class="row-amount">' + fmtRp(amt) + '</div></div>';
-    }).join('');
+    await saveFamilyPhoto(role, '');
+    refreshFamilyStrip();
+    renderFamilyPhotoSettings();
+    renderTarget();
+    msg.className = 'msg ok';
+    msg.textContent = 'Foto dihapus.';
+  } catch(e) {
+    msg.className = 'msg err';
+    msg.textContent = apiErrorMessage(e);
   }
 }
 
-// ===== Budget list =====
-function renderBudgetList() {
-  const list = document.getElementById('budget-list');
-
-  // Budget SELALU dihitung berdasar bulan ini (terlepas dari currentPeriod)
-  // — kalau filter "7 hari", kita pakai allDataCache yang sudah di-filter periode,
-  //   tapi untuk budget kita perlu data BULAN INI murni.
-  // Solusi: pakai allDataCache hanya kalau currentPeriod === 'month'.
-  // Kalau bukan, kita tetap render tapi pakai data yang ada (agar tidak kosong),
-  // dengan catatan visual.
-  const useMonthData = currentPeriod === 'month';
-  const byCat = {};
-  if (useMonthData) {
-    allDataCache.forEach(d => { byCat[d.category] = (byCat[d.category] || 0) + d.amount; });
-  }
-
-  const items = Object.keys(budgets).filter(c => budgets[c] > 0);
-  if (items.length === 0) {
-    list.innerHTML = '<div class="empty" style="padding: 8px 0;">Belum ada budget. Klik "Atur".</div>';
-    return;
-  }
-
-  let header = '';
-  if (!useMonthData) {
-    header = '<div style="font-size:11px; color:var(--text-muted); margin-bottom:8px; padding:6px 10px; background:var(--bg-muted); border-radius:6px;">ℹ Budget tetap dihitung per bulan. Pindah ke "Bulan ini" untuk progress aktual.</div>';
-  }
-
-  list.innerHTML = header + items.map(catId => {
-    const cat = getCategoryMeta(catId);
-    const limit = budgets[catId];
-    const used = useMonthData ? (byCat[catId] || 0) : 0;
-    const pct = Math.min(100, Math.round((used / limit) * 100));
-    const barColor = pct >= 90 ? 'var(--danger-bar)' : pct >= 70 ? 'var(--warn-bar)' : 'var(--green-bar)';
-    return '<div class="budget-row">' +
-      '<div class="budget-info">' +
-        '<div class="budget-label">' + iconHtml(cat.icon, 14) + escapeHtml(cat.label) +
-        ' <span style="margin-left:auto; font-size:11px; color: var(--text-muted); font-weight:normal;">' + pct + '%</span></div>' +
-        '<div class="budget-progress"><div class="budget-progress-fill" style="width:' + pct + '%; background:' + barColor + ';"></div></div>' +
-        '<div class="budget-amount">' + fmtRp(used) + ' / ' + fmtRp(limit) + '</div>' +
-      '</div>' +
-    '</div>';
-  }).join('');
-}
-
-function openBudgetModal() {
-  const list = document.getElementById('budget-edit-list');
-  list.innerHTML = CATEGORIES.map(c => {
-    const val = budgets[c.id] || 0;
-    return '<div style="margin-bottom: 12px;">' +
-      '<label style="display:flex; align-items:center; gap:6px;">' + iconHtml(c.icon, 14) + escapeHtml(c.label) + '</label>' +
-      '<input type="text" inputmode="numeric" data-bud="' + escapeHtml(c.id) + '" value="' + (val ? val.toLocaleString('id-ID') : '') + '" placeholder="0">' +
-    '</div>';
-  }).join('');
-  list.querySelectorAll('input').forEach(el => {
-    initNumberInput(el);
-    el.addEventListener('blur', () => saveBudgetField(el));
-  });
-  document.getElementById('budget-modal').classList.add('show');
-}
-
-async function saveBudgetField(input) {
-  const cat = input.dataset.bud;
-  const val = parseNum(input.value);
-  try {
-    await apiPost({ action: 'budget_set', category: cat, monthly_limit: val });
-    budgets[cat] = val;
-    renderBudgetList();
-  } catch (e) {}
-}
-
-// ===== Edit modal =====
-function openEdit(id) {
-  const item = cachedData.find(d => d.id === id);
-  if (!item) return;
-  editingId = id;
-  editSelectedCat = item.category;
-  editSelectedLoc = item.location;
-  document.getElementById('edit-amount').value = Number(item.amount).toLocaleString('id-ID');
-  document.getElementById('edit-note').value = item.note || '';
-  document.querySelectorAll('#edit-cats .opt-btn').forEach(b => {
-    b.classList.toggle('selected', b.dataset.cat === item.category);
-  });
-  document.querySelectorAll('[data-edit-loc]').forEach(b => {
-    b.classList.toggle('selected', b.dataset.editLoc === item.location);
-  });
-  document.getElementById('edit-modal').classList.add('show');
-}
-
-function closeModal(id) {
-  document.getElementById(id).classList.remove('show');
-}
-
-async function saveEdit() {
-  if (!editingId) return;
-  const amount = parseNum(document.getElementById('edit-amount').value);
-  const note = document.getElementById('edit-note').value.trim();
-  const msg = document.getElementById('edit-msg');
-
-  if (!amount) { msg.className = 'msg err'; msg.textContent = 'Nominal kosong'; return; }
-
-  try {
-    const data = await apiPost({
-      action: 'update',
-      id: editingId,
-      amount: amount,
-      note: note,
-      category: editSelectedCat,
-      location: editSelectedLoc
-    });
-    if (data.ok) {
-      closeModal('edit-modal');
-      toast('✓ Diperbarui');
-      loadData();
-    }
-  } catch (e) {}
-}
-
-async function deleteItem(id) {
-  const ok = await confirmModal('Hapus catatan ini?');
-  if (!ok) return;
-  try {
-    const data = await apiPost({ action: 'delete', id: id });
-    if (data.ok) { toast('Dihapus'); loadData(); }
-  } catch (e) {}
-}
-
-// ===== Tools =====
-async function exportCSV() {
-  toast('Mengambil data…');
-  try {
-    const res = await apiGet({ type: 'expenses', scope: 'all', period: 'all' });
-    if (!res.ok) return toast('Gagal ambil data', 'err');
-    const csv = toCSV(res.data);
-    const filename = 'pengeluaran-' + localDateKey(new Date()) + '.csv';
-    downloadCSV(filename, csv);
-    toast('✓ CSV terdownload');
-  } catch (e) { toast('Gagal', 'err'); }
-}
-
-function askAnalysis() {
-  const total = allDataCache.reduce((s, d) => s + d.amount, 0);
-  const rantau = allDataCache.filter(d => d.location === 'rantau').reduce((s, d) => s + d.amount, 0);
-  const rumah = allDataCache.filter(d => d.location === 'rumah').reduce((s, d) => s + d.amount, 0);
-  const byCat = {};
-  allDataCache.forEach(d => { byCat[d.category] = (byCat[d.category] || 0) + d.amount; });
-  const catSummary = Object.entries(byCat)
-    .sort((a, b) => b[1] - a[1])
-    .map(([c, a]) => getCategoryMeta(c).label + ' ' + fmtRp(a))
-    .join(', ');
-
-  const text = 'Analisis pengeluaran ' + (currentPeriod === 'month' ? 'bulan ini' : '7 hari') +
-    ': total ' + fmtRp(total) + ', rantau ' + fmtRp(rantau) + ', rumah ' + fmtRp(rumah) +
-    '. Per kategori: ' + catSummary + '. Apa yang sebaiknya saya kurangi?';
-
-  navigator.clipboard.writeText(text).then(() => {
-    toast('✓ Disalin. Buka chat Claude lalu paste');
-  }).catch(() => toast('Browser tidak support clipboard', 'err'));
-}
+function exportCSV(){ const csv=toCSV(monthAll.length?monthAll:allDataCache); downloadCSV('expense-keluarga-'+localDateKey(new Date())+'.csv',csv); }
+async function copyAnalysis(){ const lines=insightFrom(monthAll,incomes); const txt='Ringkasan keuangan keluarga bulan ini\n\n'+lines.join('\n')+'\n\nTotal rantau: '+fmtRp(sumAmount(monthAll.filter(e=>e.location==='rantau')))+'\nTotal rumah: '+fmtRp(sumAmount(monthAll.filter(e=>e.location==='rumah'))); try{await navigator.clipboard.writeText(txt);toast('Ringkasan dicopy');}catch(e){prompt('Copy ringkasan ini:',txt);} }
+function openModal(id){document.getElementById(id).classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
 </script>
 </body>
 </html>
