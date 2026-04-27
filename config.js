@@ -44,12 +44,9 @@ const BUDGET_DEFAULTS = {
   lain: 0
 };
 
-// Total budget bulanan default dimatikan.
-// Cashflow sekarang dihitung dari uang masuk nyata.
+// Patch v3.8.3: budget tidak memakai angka bawaan.
+// Semua perhitungan saldo memakai uang masuk nyata + transfer "Kirim ke rumah".
 const BUDGET_TOTAL = 0;
-
-// Budget rumah default dimatikan.
-// Saldo rumah sekarang dihitung dari: kirim ke rumah + uang masuk rumah - pengeluaran rumah.
 const BUDGET_RUMAH = 0;
 
 // =====================================================
