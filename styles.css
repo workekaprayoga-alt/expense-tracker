@@ -1132,3 +1132,62 @@ textarea { resize: vertical; min-height: 60px; }
 /* v3.8.1 sync helper */
 .sync-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px; font-size:12px; opacity:.92; }
 .card-elevated .sync-row .btn-secondary { background: rgba(255,255,255,.14); color: var(--text-inverse); border-color: rgba(255,255,255,.25); }
+
+
+/* v3.9 Floating Admin button — di halaman istri */
+.admin-fab{
+  position:fixed;bottom:18px;right:18px;
+  width:44px;height:44px;border-radius:50%;
+  background:rgba(160,67,97,0.92);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  text-decoration:none;
+  box-shadow:0 4px 12px rgba(160,67,97,0.35);
+  z-index:50;
+  transition:transform 0.15s, background 0.15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.admin-fab:hover,.admin-fab:focus{
+  background:#a04361;transform:scale(1.05);outline:none;
+}
+.admin-fab:active{transform:scale(0.94)}
+@media (prefers-color-scheme: dark){
+  .admin-fab{background:rgba(212,121,141,0.85)}
+  .admin-fab:hover,.admin-fab:focus{background:#d4798d}
+}
+
+
+/* v3.9 Empty state ramah */
+.empty-fresh{
+  display:flex;flex-direction:column;align-items:center;
+  text-align:center;padding:24px 16px;
+}
+.empty-fresh .empty-icon{
+  font-size:36px;margin-bottom:8px;opacity:0.85;
+}
+.empty-fresh .empty-title{
+  font-weight:600;font-size:15px;margin-bottom:6px;color:var(--text);
+}
+.empty-fresh .empty-sub{
+  font-size:12.5px;line-height:1.55;opacity:0.78;margin-bottom:12px;
+}
+.empty-fresh .empty-actions{
+  display:flex;gap:8px;justify-content:center;
+}
+.empty-fresh .empty-actions .btn-secondary{
+  font-size:12px;padding:6px 14px;
+}
+
+
+/* v3.9 Header lock button (admin) */
+.header-lock-btn{
+  background:rgba(255,255,255,0.15);
+  border:1px solid rgba(255,255,255,0.25);
+  color:#fff;
+  width:34px;height:34px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;flex-shrink:0;
+  transition:background 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color:transparent;
+}
+.header-lock-btn:hover{background:rgba(255,255,255,0.25)}
+.header-lock-btn:active{transform:scale(0.92)}

@@ -413,9 +413,38 @@ function prettyDateKey(key) {
   return fmtDate(d.toISOString());
 }
 
+function emptyStateMessage(opts) {
+  opts = opts || {};
+  const period = opts.period || 'month';
+  const scope = opts.scope || 'all';
+  if (period !== 'month') {
+    return '<div class="empty">Belum ada catatan di rentang ini.</div>';
+  }
+  const now = new Date();
+  const day = now.getDate();
+  const monthName = now.toLocaleDateString('id-ID', { month: 'long' });
+  const isFreshMonth = day <= 3;
+  const scopeName = scope === 'rumah' ? 'rumah' : (scope === 'rantau' ? 'rantau' : 'keluarga');
+  const ctaTo7Days = '<button class="btn-secondary micro" onclick="(function(){var b=document.querySelector(\'[data-period=\\\'week\\\']\');if(b){b.click();}})()">Lihat 7 hari terakhir →</button>';
+  if (isFreshMonth) {
+    return '<div class="empty empty-fresh">' +
+      '<div class="empty-icon">✨</div>' +
+      '<div class="empty-title">' + monthName + ' baru mulai</div>' +
+      '<div class="empty-sub">Belum ada catatan ' + scopeName + ' bulan ini.<br>Data bulan lalu tersimpan aman di Sheet.</div>' +
+      '<div class="empty-actions">' + ctaTo7Days + '</div>' +
+      '</div>';
+  }
+  return '<div class="empty empty-fresh">' +
+    '<div class="empty-icon">📭</div>' +
+    '<div class="empty-title">Belum ada catatan</div>' +
+    '<div class="empty-sub">Untuk filter ' + scopeName + ' bulan ini.<br>Coba lihat 7 hari terakhir atau ganti filter.</div>' +
+    '<div class="empty-actions">' + ctaTo7Days + '</div>' +
+    '</div>';
+}
+
 function renderTimeline(rows, opts) {
   opts = opts || {};
-  if (!rows || rows.length === 0) return '<div class="empty">Belum ada data</div>';
+  if (!rows || rows.length === 0) return emptyStateMessage(opts);
   return groupByDate(rows).map(g => {
     const daily = sumAmount(g.rows);
     const items = g.rows.map(e => {
@@ -432,8 +461,8 @@ function renderTimeline(rows, opts) {
   }).join('');
 }
 
-function renderCategorySummary(rows) {
-  if (!rows || rows.length === 0) return '<div class="empty">Belum ada data</div>';
+function renderCategorySummary(rows, opts) {
+  if (!rows || rows.length === 0) return emptyStateMessage(opts);
   const total = sumAmount(rows);
   const map = {};
   rows.forEach(e => { map[e.category] = (map[e.category] || 0) + (Number(e.amount) || 0); });

@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#a04361">
 <meta name="theme-color" content="#1c1418" media="(prefers-color-scheme: dark)">
 <title>Dashboard Keuangan Keluarga</title>
-<link rel="manifest" href="manifest.json?v=family383">
+<link rel="manifest" href="manifest-admin.json?v=family39">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon-192.svg">
 <link rel="stylesheet" href="styles.css?v=family383">
@@ -23,11 +23,14 @@
 <div id="app" style="display:none;">
   <div class="app-header family-header">
     <div class="app-logo app-logo-glow">❤</div>
-    <div>
+    <div style="flex:1;min-width:0;">
       <h1>Dashboard keuangan</h1>
       <p class="subtitle" style="margin:0;" id="family-name">Semua pengeluaran keluarga</p>
     </div>
     <div id="header-family-strip"></div>
+    <button class="header-lock-btn" onclick="logout()" title="Kunci dashboard" aria-label="Kunci dashboard">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </button>
   </div>
 
 
@@ -334,7 +337,7 @@ function renderWallet(){ const flow=scopeCashflow('all',monthAll,incomes,savingE
 function renderTarget(){ const el=document.getElementById('target-wrap'); if(el) el.innerHTML=renderSavingsTargets(savingsTargets,{admin:true, showVisibility:true}); }
 function renderMessages(rows){ const list=document.getElementById('messages-list'); if(!rows.length){list.innerHTML='<div class="empty">Belum ada pesan</div>'; return;} list.innerHTML=rows.map(m=>'<div class="love-note"><div><b>'+escapeHtml(shortName(m.from)||'Keluarga')+'</b><span>'+fmtDate(m.timestamp)+' · '+fmtTime(m.timestamp)+' → '+escapeHtml(m.to||'')+'</span></div><p>'+escapeHtml(m.message)+'</p></div>').join(''); }
 function renderInsights(){ const lines=insightFrom(monthAll,incomes); document.getElementById('insight-list').innerHTML='<ul class="insight-list">'+lines.map(l=>'<li>'+escapeHtml(l)+'</li>').join('')+'</ul>'; }
-function renderContent(){ document.getElementById('content').innerHTML=currentView==='cat'?renderCategorySummary(cachedData):renderTimeline(cachedData,{editable:true}); }
+function renderContent(){ const opts={scope:currentScope,period:currentPeriod,editable:true}; document.getElementById('content').innerHTML=currentView==='cat'?renderCategorySummary(cachedData,opts):renderTimeline(cachedData,opts); }
 function renderTemplates(){ const card=document.getElementById('templates-card'), list=document.getElementById('templates-list'); card.style.display='block'; if(!templates.length){list.innerHTML='<div class="empty">Belum ada template. Klik Tambah.</div>'; return;} list.innerHTML='<div class="template-chips">'+templates.map((t,i)=>{const cat=getCategoryMeta(t.category); return '<button class="template-chip" onclick="useTemplate('+i+')">'+iconHtml(cat.icon,14)+'<span>'+escapeHtml(t.label)+'</span><b>'+fmtRp(t.amount)+'</b></button><button class="chip-delete" onclick="deleteTemplateById(\''+t.id+'\')">×</button>';}).join('')+'</div>'; }
 function renderBudgetList(){ const list=document.getElementById('budget-list'); if(!list) return; const byCat={}; monthAll.forEach(e=>byCat[e.category]=(byCat[e.category]||0)+(Number(e.amount)||0)); list.innerHTML=CATEGORIES.map(c=>{const limit=Number(budgets[c.id])||0, used=byCat[c.id]||0, p=pct(used,limit); return '<div class="budget-row"><div class="budget-top"><span>'+iconHtml(c.icon,16)+' '+escapeHtml(c.label)+'</span><b>'+fmtRp(used)+' / '+fmtRp(limit)+'</b></div>'+progressHtml(used,limit,limit?Math.round(p)+'%':'Belum ada budget')+'</div>';}).join(''); const edit=document.getElementById('budget-edit-list'); if(edit) edit.innerHTML=CATEGORIES.map(c=>'<label>'+escapeHtml(c.label)+'</label><input type="text" data-budget-cat="'+c.id+'" value="'+fmtNum(budgets[c.id]||0)+'">').join(''); if(edit) edit.querySelectorAll('[data-budget-cat]').forEach(inp=>{ initNumberInput(inp); inp.onblur=()=>setBudgetValue(inp.dataset.budgetCat,parseNum(inp.value)); }); }
 async function saveExpense(){ if(isSaving)return; const amount=parseNum(document.getElementById('amount').value), note=document.getElementById('note').value.trim(), msg=document.getElementById('msg'), btn=document.getElementById('save'); if(!amount){msg.className='msg err';msg.textContent='Nominal kosong';return;} if(!selectedLoc){msg.className='msg err';msg.textContent='Pilih lokasi';return;} if(!selectedCat){msg.className='msg err';msg.textContent='Pilih kategori';return;} isSaving=true;btn.disabled=true;btn.textContent='Menyimpan…'; try{ await safePost({action:'add',amount,note:note||getCategoryMeta(selectedCat).label,category:selectedCat,location:selectedLoc,who:NAMA_SUAMI,message:''}); toast('✓ Tersimpan'); document.getElementById('amount').value=''; document.getElementById('note').value=''; selectedCat=null;selectedLoc=null; document.querySelectorAll('#cats .opt-btn,[data-loc]').forEach(x=>x.classList.remove('selected')); msg.textContent=''; await new Promise(r=>setTimeout(r,700)); loadData(); }catch(e){msg.className='msg err';msg.textContent='Gagal: '+apiErrorMessage(e);} isSaving=false;btn.disabled=false;btn.textContent='Simpan'; }
